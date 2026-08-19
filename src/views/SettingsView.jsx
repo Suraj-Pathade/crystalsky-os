@@ -1,18 +1,19 @@
 import React, { useState } from 'react';
-import { Settings, Database, Calendar, Smartphone, Download, RefreshCw, Check } from 'lucide-react';
+import { Settings, Database, Calendar, Smartphone, Download, RefreshCw, Check, Trash2 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { StorageService } from '../services/storageService';
 
 export default function SettingsView({ onOpenIntegrationsTest, onOpenSetupWizard }) {
-  const { settings, updateSettings, showToast, refreshData } = useApp();
+  const { settings, updateSettings, showToast, refreshData, clearDatabase, checkAdminPermission } = useApp();
 
-  const [ownerName, setOwnerName] = useState(settings.ownerName || 'Suraj Pathade');
-  const [ownerPhone, setOwnerPhone] = useState(settings.ownerPhone || '9922639066');
+  const [ownerName, setOwnerName] = useState(settings.ownerName || 'Pravin Ghukshe');
+  const [ownerPhone, setOwnerPhone] = useState(settings.ownerPhone || '8412850833');
   const [scriptUrl, setScriptUrl] = useState(settings.googleScriptUrl || '');
   const [calendarId, setCalendarId] = useState(settings.googleCalendarId || '');
 
   const handleSave = (e) => {
     e.preventDefault();
+    if (!checkAdminPermission()) return;
     updateSettings({
       ownerName,
       ownerPhone,
@@ -43,6 +44,13 @@ export default function SettingsView({ onOpenIntegrationsTest, onOpenSetupWizard
     link.download = `CrystalSky_Backup_${new Date().toISOString().split('T')[0]}.json`;
     link.click();
     showToast('Database backup downloaded!');
+  };
+
+  const handleClearData = () => {
+    if (!checkAdminPermission()) return;
+    if (window.confirm('Are you sure you want to clear all data and reset to a clean empty database?')) {
+      clearDatabase();
+    }
   };
 
   return (
@@ -148,22 +156,33 @@ export default function SettingsView({ onOpenIntegrationsTest, onOpenSetupWizard
         </div>
       </div>
 
-      {/* Database Backup Section */}
+      {/* Database Backup & Reset Section */}
       <div className="p-6 rounded-2xl glass-panel space-y-3">
         <h3 className="text-sm font-bold text-white flex items-center gap-2">
           <Download className="w-4 h-4 text-emerald-400" />
-          Database Backup & Data Safety
+          Database Backup & Production Reset
         </h3>
         <p className="text-xs text-zinc-400">
           Download a complete JSON export of all clients, events, payments, expenses, and team assignments for offline backup.
         </p>
-        <button
-          onClick={handleExportBackup}
-          className="px-4 py-2.5 rounded-xl bg-zinc-900 border border-zinc-800 text-white font-bold text-xs flex items-center gap-2 hover:border-emerald-500"
-        >
-          <Download className="w-4 h-4 text-emerald-400" />
-          Download Complete Database Backup (.JSON)
-        </button>
+
+        <div className="flex flex-wrap items-center gap-3 pt-2">
+          <button
+            onClick={handleExportBackup}
+            className="px-4 py-2.5 rounded-xl bg-zinc-900 border border-zinc-800 text-white font-bold text-xs flex items-center gap-2 hover:border-emerald-500"
+          >
+            <Download className="w-4 h-4 text-emerald-400" />
+            Download Complete Database Backup (.JSON)
+          </button>
+
+          <button
+            onClick={handleClearData}
+            className="px-4 py-2.5 rounded-xl bg-zinc-900 border border-zinc-800 text-rose-400 font-bold text-xs flex items-center gap-2 hover:bg-rose-500/20 hover:border-rose-500/40"
+          >
+            <Trash2 className="w-4 h-4" />
+            Reset to Clean Empty Database
+          </button>
+        </div>
       </div>
     </div>
   );

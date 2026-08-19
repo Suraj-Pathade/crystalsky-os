@@ -1,12 +1,11 @@
 import React from 'react';
-import { Search, Plus, RefreshCw, Sparkles, Trash2, Sun, Moon, Database, ShieldCheck, UserCheck } from 'lucide-react';
+import { Search, Plus, RefreshCw, Trash2, Sun, Moon, Database, ShieldCheck, Camera } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import LoginModal from './LoginModal';
 
 export default function Header({ onOpenQuickAdd }) {
   const { 
     searchQuery, setSearchQuery, settings, refreshData, 
-    showToast, loadDemoData, clearDatabase, events,
     themeMode, toggleThemeMode, setActiveView,
     currentUser, isAdmin, isLoginModalOpen, setIsLoginModalOpen
   } = useApp();
@@ -15,7 +14,7 @@ export default function Header({ onOpenQuickAdd }) {
     const hour = new Date().getHours();
     if (hour >= 5 && hour < 12) return { text: 'Good Morning 🌅', sub: 'Shubh Prabhat' };
     if (hour >= 12 && hour < 17) return { text: 'Good Afternoon ☀️', sub: 'Shubh Dopahar' };
-    if (hour >= 17 && hour < 22) return { text: 'Good Evening <ctrl42>', sub: 'Shubh Sandhya' };
+    if (hour >= 17 && hour < 22) return { text: 'Good Evening 🌆', sub: 'Shubh Sandhya' };
     return { text: 'Good Night 🌙', sub: 'Shubh Ratri' };
   };
 
@@ -33,7 +32,7 @@ export default function Header({ onOpenQuickAdd }) {
   return (
     <>
       <header className="bg-zinc-950/95 dark:bg-zinc-950/95 light:bg-white border-b border-zinc-800/80 dark:border-zinc-800/80 light:border-zinc-200 sticky top-0 z-30 px-4 md:px-6 py-3 flex items-center justify-between gap-4 transition-colors">
-        {/* Left: Greeting & Owner */}
+        {/* Left: Dynamic Time Greeting & Owner */}
         <div>
           <h2 className="text-base md:text-lg font-extrabold text-white dark:text-white light:text-zinc-900 tracking-tight flex items-center gap-2">
             <span>{greeting.text},</span>
@@ -57,7 +56,7 @@ export default function Header({ onOpenQuickAdd }) {
           </div>
         </div>
 
-        {/* Middle: Search Bar */}
+        {/* Middle: Search Input */}
         <div className="flex-1 max-w-md hidden sm:block relative">
           <Search className="w-4 h-4 text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
@@ -93,28 +92,6 @@ export default function Header({ onOpenQuickAdd }) {
           >
             {themeMode === 'dark' ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-indigo-600" />}
           </button>
-
-          {/* Demo Data Toggle Button */}
-          {events.length === 0 ? (
-            <button
-              onClick={loadDemoData}
-              title="Load realistic sample data"
-              className="px-3 py-2 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/40 hover:bg-amber-500/30 text-xs font-extrabold flex items-center gap-1.5 shadow-sm transition-all"
-            >
-              <Sparkles className="w-3.5 h-3.5" />
-              <span className="hidden md:inline">⚡ Demo Data</span>
-              <span className="md:hidden">Demo</span>
-            </button>
-          ) : (
-            <button
-              onClick={clearDatabase}
-              title="Clear all data to zero"
-              className="px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-800 text-rose-400 hover:bg-rose-500/20 text-xs font-bold flex items-center gap-1.5 transition-all"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-              <span className="hidden md:inline">Reset</span>
-            </button>
-          )}
 
           <button
             onClick={refreshData}
