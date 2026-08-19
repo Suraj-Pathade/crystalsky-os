@@ -1,12 +1,15 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Search, Plus, RefreshCw, Sun, Moon, Database, ShieldCheck, Lock } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { StorageService } from '../services/storageService';
 
 export default function Header({ onOpenQuickAdd }) {
   const { 
     searchQuery, setSearchQuery, settings, refreshData, 
-    themeMode, toggleThemeMode, setActiveView, lockApp
+    themeMode, toggleThemeMode, setActiveView, lockApp, showToast
   } = useApp();
+
+  const [isSyncing, setIsSyncing] = useState(false);
 
   const getTimeBasedGreeting = () => {
     const hour = new Date().getHours();
@@ -27,6 +30,24 @@ export default function Header({ onOpenQuickAdd }) {
 
   const isSheetsConnected = Boolean(settings.googleScriptUrl);
 
+  const handleManualCloudSync = async () => {
+    setIsSyncing(true);
+    if (settings.googleScriptUrl) {
+      const liveData = await StorageService.fetchLiveDataFromSheets();
+      setIsSyncing(false);
+      refreshData();
+      if (liveData) {
+        showToast('⚡ Live data fetched from Google Sheets! Mobile & Laptop now in sync.');
+      } else {
+        showToast('Refreshed local data engine.', 'info');
+      }
+    } else {
+      setIsSyncing(false);
+      refreshData();
+      showToast('⚠️ Connect Google Sheets URL in Settings for Laptop ↔ Mobile cloud sync!', 'warning');
+    }
+  };
+
   return (
     <header className="bg-zinc-950/95 dark:bg-zinc-950/95 light:bg-white border-b border-zinc-800/80 dark:border-zinc-800/80 light:border-zinc-200 sticky top-0 z-30 px-4 md:px-6 py-3 flex items-center justify-between gap-4 transition-colors">
       {/* Left: Dynamic Time Greeting & Owner */}
@@ -44,11 +65,11 @@ export default function Header({ onOpenQuickAdd }) {
             className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold transition-all ${
               isSheetsConnected
                 ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                : 'bg-zinc-800 text-zinc-400 hover:text-white'
+                : 'bg-amber-500/20 text-amber-400 border border-amber-500/40 hover:bg-amber-500/30'
             }`}
           >
             <Database className="w-3 h-3" />
-            <span>{isSheetsConnected ? 'Sheets Sync Live ⚡' : 'Connect Sheets'}</span>
+            <span>{isSheetsConnected ? 'Sheets Sync Live ⚡' : '⚠️ Connect Sheets (Mobile Sync)'}</span>
           </button>
         </div>
       </div>
@@ -86,12 +107,17 @@ export default function Header({ onOpenQuickAdd }) {
           {themeMode === 'dark' ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-indigo-600" />}
         </button>
 
+        {/* Cloud Sync Button */}
         <button
-          onClick={refreshData}
-          title="Refresh Data from Google Sheets"
-          className="p-2 rounded-xl bg-zinc-900 dark:bg-zinc-900 light:bg-zinc-100 border border-zinc-800 dark:border-zinc-800 light:border-zinc-300 text-zinc-400 hover:text-white"
+          onClick={handleManualCloudSync}
+          title="Sync Live Data with Google Sheets Cloud"
+          className={`p-2 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition-all ${
+            isSyncing 
+              ? 'bg-amber-500/20 text-amber-400 border-amber-500/40 animate-spin' 
+              : 'bg-zinc-900 dark:bg-zinc-900 light:bg-zinc-100 border-zinc-800 text-zinc-300 hover:text-white'
+          }`}
         >
-          <RefreshCw className="w-4 h-4" />
+          <RefreshCw className="w-4 h-4 text-emerald-400" />
         </button>
 
         <button
