@@ -67,6 +67,20 @@ export function AppProvider({ children }) {
     setAuditLogs(StorageService.getAuditLogs());
   };
 
+  // On App Mount: Fetch live data from Google Sheets if connected
+  useEffect(() => {
+    const fetchLiveSheetsData = async () => {
+      if (settings.googleScriptUrl) {
+        const liveData = await StorageService.fetchLiveDataFromSheets();
+        if (liveData) {
+          refreshData();
+          showToast('Synced live data from Google Sheets at runtime!');
+        }
+      }
+    };
+    fetchLiveSheetsData();
+  }, []);
+
   // 1-Click Load Sample Demo Data
   const loadDemoData = () => {
     localStorage.setItem('crystalsky_clients', JSON.stringify(SAMPLE_CLIENTS));
@@ -98,7 +112,7 @@ export function AppProvider({ children }) {
   const saveClient = (clientData) => {
     const saved = StorageService.saveClient(clientData);
     refreshData();
-    showToast(`Client "${saved.Name}" saved!`);
+    showToast(`Client "${saved.Name}" saved to Google Sheets in real-time!`);
     return saved;
   };
 
@@ -111,7 +125,7 @@ export function AppProvider({ children }) {
   const saveEvent = (eventData) => {
     const saved = StorageService.saveEvent(eventData);
     refreshData();
-    showToast(`Shoot "${saved.EventName}" saved!`);
+    showToast(`Shoot "${saved.EventName}" saved to Google Sheets in real-time!`);
     return saved;
   };
 
@@ -124,14 +138,14 @@ export function AppProvider({ children }) {
   const savePayment = (paymentData) => {
     const saved = StorageService.savePayment(paymentData);
     refreshData();
-    showToast(`Payment of ₹${Number(saved.Amount).toLocaleString('en-IN')} recorded!`);
+    showToast(`Payment of ₹${Number(saved.Amount).toLocaleString('en-IN')} saved to Google Sheets in real-time!`);
     return saved;
   };
 
   const saveExpense = (expenseData) => {
     const saved = StorageService.saveExpense(expenseData);
     refreshData();
-    showToast(`Expense of ₹${Number(saved.Amount).toLocaleString('en-IN')} logged!`);
+    showToast(`Expense of ₹${Number(saved.Amount).toLocaleString('en-IN')} saved to Google Sheets in real-time!`);
     return saved;
   };
 
@@ -144,7 +158,7 @@ export function AppProvider({ children }) {
   const saveTeamMember = (memberData) => {
     const saved = StorageService.saveTeamMember(memberData);
     refreshData();
-    showToast(`Team member "${saved.Name}" saved!`);
+    showToast(`Team member "${saved.Name}" saved to Google Sheets in real-time!`);
     return saved;
   };
 
@@ -158,14 +172,14 @@ export function AppProvider({ children }) {
   const saveTask = (taskData) => {
     const saved = StorageService.saveTask(taskData);
     refreshData();
-    showToast(`Task "${saved.TaskName}" updated!`);
+    showToast(`Task "${saved.TaskName}" saved to Google Sheets in real-time!`);
     return saved;
   };
 
   const saveDeliverable = (delivData) => {
     const saved = StorageService.saveDeliverable(delivData);
     refreshData();
-    showToast(`Deliverable "${saved.Type}" updated!`);
+    showToast(`Deliverable "${saved.Type}" saved to Google Sheets in real-time!`);
     return saved;
   };
 

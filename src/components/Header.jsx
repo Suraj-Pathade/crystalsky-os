@@ -1,12 +1,12 @@
 import React from 'react';
-import { Search, Plus, RefreshCw, Sparkles, Trash2, Sun, Moon } from 'lucide-react';
+import { Search, Plus, RefreshCw, Sparkles, Trash2, Sun, Moon, Database } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 
 export default function Header({ onOpenQuickAdd }) {
   const { 
     searchQuery, setSearchQuery, settings, refreshData, 
     showToast, loadDemoData, clearDatabase, events,
-    themeMode, toggleThemeMode 
+    themeMode, toggleThemeMode, setActiveView
   } = useApp();
 
   const getTimeBasedGreeting = () => {
@@ -26,20 +26,35 @@ export default function Header({ onOpenQuickAdd }) {
     year: 'numeric'
   });
 
+  const isSheetsConnected = Boolean(settings.googleScriptUrl);
+
   return (
     <header className="bg-zinc-950/95 dark:bg-zinc-950/95 light:bg-white border-b border-zinc-800/80 dark:border-zinc-800/80 light:border-zinc-200 sticky top-0 z-30 px-4 md:px-6 py-3 flex items-center justify-between gap-4 transition-colors">
       {/* Left: Dynamic Time Greeting & Owner */}
       <div>
         <h2 className="text-base md:text-lg font-extrabold text-white dark:text-white light:text-zinc-900 tracking-tight flex items-center gap-2">
           <span>{greeting.text},</span>
-          <span className="text-amber-500">{settings.ownerName || 'Pravin Ghukshe'}</span>
+          <span className="text-amber-400">Pravin Ghukshe</span>
         </h2>
-        <p className="text-[11px] text-zinc-400 font-mono">
-          📅 {formattedDate} • <span className="text-amber-400 font-semibold">{greeting.sub}</span>
-        </p>
+        <div className="flex items-center gap-2 text-[11px] text-zinc-400 font-mono mt-0.5">
+          <span>📅 {formattedDate}</span>
+          <span>•</span>
+          {/* Live Google Sheets Active Indicator */}
+          <button
+            onClick={() => setActiveView('settings')}
+            className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold transition-all ${
+              isSheetsConnected
+                ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                : 'bg-zinc-800 text-zinc-400 hover:text-white'
+            }`}
+          >
+            <Database className="w-3 h-3" />
+            <span>{isSheetsConnected ? 'Google Sheets Live Sync Active ⚡' : 'Connect Google Sheets'}</span>
+          </button>
+        </div>
       </div>
 
-      {/* Middle: Search Bar */}
+      {/* Middle: Search Input */}
       <div className="flex-1 max-w-md hidden sm:block relative">
         <Search className="w-4 h-4 text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2" />
         <input
@@ -51,7 +66,7 @@ export default function Header({ onOpenQuickAdd }) {
         />
       </div>
 
-      {/* Right: Actions (Day/Night Theme Toggle, Demo Data, Refresh, Quick Add) */}
+      {/* Right: Actions */}
       <div className="flex items-center gap-2">
         {/* Day / Night Theme Toggle */}
         <button
@@ -86,7 +101,7 @@ export default function Header({ onOpenQuickAdd }) {
 
         <button
           onClick={refreshData}
-          title="Refresh Data"
+          title="Refresh Data from Google Sheets"
           className="p-2 rounded-xl bg-zinc-900 dark:bg-zinc-900 light:bg-zinc-100 border border-zinc-800 dark:border-zinc-800 light:border-zinc-300 text-zinc-400 hover:text-white"
         >
           <RefreshCw className="w-4 h-4" />

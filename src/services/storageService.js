@@ -1,5 +1,5 @@
 /**
- * Dual-Mode Data Storage Engine for CrystalSky OS
+ * Dual-Mode Data Storage & Runtime Real-Time Google Sheets Sync Engine
  * Owner: Pravin Ghukshe (8412850833)
  * Brand: CrystalSky Photography & Film
  */
@@ -16,7 +16,8 @@ const STORAGE_KEYS = {
   DELIVERABLES: 'crystalsky_deliverables',
   NOTIFICATIONS: 'crystalsky_notifications',
   AUDIT_LOG: 'crystalsky_audit_log',
-  COUNTERS: 'crystalsky_counters'
+  COUNTERS: 'crystalsky_counters',
+  LAST_SYNC: 'crystalsky_last_sync'
 };
 
 const DEFAULT_SETTINGS = {
@@ -78,17 +79,20 @@ export const StorageService = {
     const current = this.getSettings();
     const updated = { ...current, ...newSettings, updatedAt: new Date().toISOString() };
     setItem(STORAGE_KEYS.SETTINGS, updated);
-    this.logAudit('Pravin Ghukshe', 'UPDATE', 'Settings', 'SYSTEM', 'Updated system settings');
+    this.logAudit('Pravin Ghukshe', 'UPDATE', 'Settings', 'SYSTEM', 'Updated settings');
     return updated;
   },
 
+  // Clients CRUD (Runtime Synced)
   getClients() {
     return getItem(STORAGE_KEYS.CLIENTS, []);
   },
   saveClient(clientData) {
     const clients = this.getClients();
     let client;
+    let actionType = 'addRecord';
     if (clientData.ClientID) {
+      actionType = 'updateRecord';
       const idx = clients.findIndex(c => c.ClientID === clientData.ClientID);
       client = { ...clients[idx], ...clientData, UpdatedAt: new Date().toISOString() };
       if (idx !== -1) clients[idx] = client;
@@ -111,22 +115,26 @@ export const StorageService = {
       this.logAudit('Pravin Ghukshe', 'CREATE', 'Clients', client.ClientID, `Created client ${client.Name}`);
     }
     setItem(STORAGE_KEYS.CLIENTS, clients);
-    this.syncToGoogleSheets('addRecord', { tableName: 'Clients', record: client });
+    this.syncToGoogleSheets(actionType, { tableName: 'Clients', recordId: client.ClientID, record: client });
     return client;
   },
   deleteClient(clientID) {
     const clients = this.getClients().filter(c => c.ClientID !== clientID);
     setItem(STORAGE_KEYS.CLIENTS, clients);
     this.logAudit('Pravin Ghukshe', 'ARCHIVE', 'Clients', clientID, `Archived client ${clientID}`);
+    this.syncToGoogleSheets('deleteRecord', { tableName: 'Clients', recordId: clientID });
   },
 
+  // Events CRUD (Runtime Synced)
   getEvents() {
     return getItem(STORAGE_KEYS.EVENTS, []);
   },
   saveEvent(eventData) {
     const events = this.getEvents();
     let event;
+    let actionType = 'addRecord';
     if (eventData.EventID) {
+      actionType = 'updateRecord';
       const idx = events.findIndex(e => e.EventID === eventData.EventID);
       event = { ...events[idx], ...eventData, UpdatedAt: new Date().toISOString() };
       if (idx !== -1) events[idx] = event;
@@ -159,15 +167,17 @@ export const StorageService = {
       this.logAudit('Pravin Ghukshe', 'CREATE', 'Events', event.EventID, `Created event ${event.EventName}`);
     }
     setItem(STORAGE_KEYS.EVENTS, events);
-    this.syncToGoogleSheets('addRecord', { tableName: 'Events', record: event });
+    this.syncToGoogleSheets(actionType, { tableName: 'Events', recordId: event.EventID, record: event });
     return event;
   },
   deleteEvent(eventID) {
     const events = this.getEvents().filter(e => e.EventID !== eventID);
     setItem(STORAGE_KEYS.EVENTS, events);
     this.logAudit('Pravin Ghukshe', 'ARCHIVE', 'Events', eventID, `Archived event ${eventID}`);
+    this.syncToGoogleSheets('deleteRecord', { tableName: 'Events', recordId: eventID });
   },
 
+  // Payments CRUD (Runtime Synced)
   getPayments() {
     return getItem(STORAGE_KEYS.PAYMENTS, []);
   },
@@ -189,18 +199,21 @@ export const StorageService = {
     };
     payments.push(payment);
     setItem(STORAGE_KEYS.PAYMENTS, payments);
-    this.logAudit('Pravin Ghukshe', 'PAYMENT', 'Payments', payment.PaymentID, `Recorded payment of ₹${payment.Amount} for ${payment.ClientName}`);
-    this.syncToGoogleSheets('addRecord', { tableName: 'Payments', record: payment });
+    this.logAudit('Pravin Ghukshe', 'PAYMENT', 'Payments', payment.PaymentID, `Recorded payment ₹${payment.Amount}`);
+    this.syncToGoogleSheets('addRecord', { tableName: 'Payments', recordId: payment.PaymentID, record: payment });
     return payment;
   },
 
+  // Expenses CRUD (Runtime Synced)
   getExpenses() {
     return getItem(STORAGE_KEYS.EXPENSES, []);
   },
   saveExpense(expenseData) {
     const expenses = this.getExpenses();
     let expense;
+    let actionType = 'addRecord';
     if (expenseData.ExpenseID) {
+      actionType = 'updateRecord';
       const idx = expenses.findIndex(e => e.ExpenseID === expenseData.ExpenseID);
       expense = { ...expenses[idx], ...expenseData };
       if (idx !== -1) expenses[idx] = expense;
@@ -224,25 +237,29 @@ export const StorageService = {
         CreatedAt: new Date().toISOString()
       };
       expenses.push(expense);
-      this.logAudit('Pravin Ghukshe', 'EXPENSE', 'Expenses', expense.ExpenseID, `Added expense of ₹${expense.Amount} [${expense.Category}]`);
+      this.logAudit('Pravin Ghukshe', 'EXPENSE', 'Expenses', expense.ExpenseID, `Added expense ₹${expense.Amount}`);
     }
     setItem(STORAGE_KEYS.EXPENSES, expenses);
-    this.syncToGoogleSheets('addRecord', { tableName: 'Expenses', record: expense });
+    this.syncToGoogleSheets(actionType, { tableName: 'Expenses', recordId: expense.ExpenseID, record: expense });
     return expense;
   },
   deleteExpense(expenseID) {
     const expenses = this.getExpenses().filter(e => e.ExpenseID !== expenseID);
     setItem(STORAGE_KEYS.EXPENSES, expenses);
     this.logAudit('Pravin Ghukshe', 'DELETE', 'Expenses', expenseID, `Deleted expense ${expenseID}`);
+    this.syncToGoogleSheets('deleteRecord', { tableName: 'Expenses', recordId: expenseID });
   },
 
+  // Team CRUD (Runtime Synced)
   getTeam() {
     return getItem(STORAGE_KEYS.TEAM, []);
   },
   saveTeamMember(memberData) {
     const team = this.getTeam();
     let member;
+    let actionType = 'addRecord';
     if (memberData.PersonID) {
+      actionType = 'updateRecord';
       const idx = team.findIndex(t => t.PersonID === memberData.PersonID);
       member = { ...team[idx], ...memberData };
       if (idx !== -1) team[idx] = member;
@@ -263,7 +280,7 @@ export const StorageService = {
       this.logAudit('Pravin Ghukshe', 'CREATE', 'Team', member.PersonID, `Added team member ${member.Name}`);
     }
     setItem(STORAGE_KEYS.TEAM, team);
-    this.syncToGoogleSheets('addRecord', { tableName: 'Team', record: member });
+    this.syncToGoogleSheets(actionType, { tableName: 'Team', recordId: member.PersonID, record: member });
     return member;
   },
 
@@ -273,11 +290,13 @@ export const StorageService = {
   saveEventTeamAssignment(assignmentData) {
     const assignments = this.getEventTeamAssignments();
     let assignment;
+    let actionType = 'addRecord';
     const agreed = Number(assignmentData.AgreedAmount || 0);
     const paid = Number(assignmentData.PaidAmount || 0);
     const pending = agreed - paid;
     
     if (assignmentData.AssignmentID) {
+      actionType = 'updateRecord';
       const idx = assignments.findIndex(a => a.AssignmentID === assignmentData.AssignmentID);
       assignment = {
         ...assignments[idx],
@@ -305,7 +324,8 @@ export const StorageService = {
       assignments.push(assignment);
     }
     setItem(STORAGE_KEYS.EVENT_TEAM, assignments);
-    this.logAudit('Pravin Ghukshe', 'ASSIGN_TEAM', 'EventTeam', assignment.AssignmentID, `Assigned ${assignment.PersonName} to event`);
+    this.logAudit('Pravin Ghukshe', 'ASSIGN_TEAM', 'EventTeam', assignment.AssignmentID, `Assigned ${assignment.PersonName}`);
+    this.syncToGoogleSheets(actionType, { tableName: 'EventTeam', recordId: assignment.AssignmentID, record: assignment });
     return assignment;
   },
 
@@ -315,7 +335,9 @@ export const StorageService = {
   saveTask(taskData) {
     const tasks = this.getTasks();
     let task;
+    let actionType = 'addRecord';
     if (taskData.TaskID) {
+      actionType = 'updateRecord';
       const idx = tasks.findIndex(t => t.TaskID === taskData.TaskID);
       task = { ...tasks[idx], ...taskData };
       if (task.Status === 'COMPLETED' && !task.CompletedAt) {
@@ -341,6 +363,7 @@ export const StorageService = {
     }
     setItem(STORAGE_KEYS.TASKS, tasks);
     this.logAudit('Pravin Ghukshe', 'TASK', 'Tasks', task.TaskID, `Saved task ${task.TaskName}`);
+    this.syncToGoogleSheets(actionType, { tableName: 'Tasks', recordId: task.TaskID, record: task });
     return task;
   },
 
@@ -350,7 +373,9 @@ export const StorageService = {
   saveDeliverable(delivData) {
     const items = this.getDeliverables();
     let item;
+    let actionType = 'addRecord';
     if (delivData.DeliverableID) {
+      actionType = 'updateRecord';
       const idx = items.findIndex(d => d.DeliverableID === delivData.DeliverableID);
       item = { ...items[idx], ...delivData, UpdatedAt: new Date().toISOString() };
       if (idx !== -1) items[idx] = item;
@@ -370,6 +395,7 @@ export const StorageService = {
       items.push(item);
     }
     setItem(STORAGE_KEYS.DELIVERABLES, items);
+    this.syncToGoogleSheets(actionType, { tableName: 'Deliverables', recordId: item.DeliverableID, record: item });
     return item;
   },
 
@@ -392,14 +418,16 @@ export const StorageService = {
 
   clearAllData() {
     Object.values(STORAGE_KEYS).forEach(key => localStorage.removeItem(key));
-    this.logAudit('Pravin Ghukshe', 'CLEAR', 'System', 'ALL', 'Database reset to empty state');
+    this.logAudit('Pravin Ghukshe', 'CLEAR', 'System', 'ALL', 'Database reset');
   },
 
+  // Real-Time Runtime Google Sheets Push Helper
   async syncToGoogleSheets(action, payload = {}) {
     const settings = this.getSettings();
     if (!settings.googleScriptUrl) return;
     
     try {
+      localStorage.setItem(STORAGE_KEYS.LAST_SYNC, new Date().toISOString());
       await fetch(settings.googleScriptUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -407,7 +435,35 @@ export const StorageService = {
         mode: 'no-cors'
       });
     } catch (e) {
-      console.warn('Google Sheets sync error:', e);
+      console.warn('Google Sheets runtime push failed:', e);
     }
+  },
+
+  // Pull Live Data from Google Sheets API on App Load
+  async fetchLiveDataFromSheets() {
+    const settings = this.getSettings();
+    if (!settings.googleScriptUrl) return null;
+
+    try {
+      const res = await fetch(`${settings.googleScriptUrl}?action=getAllData`);
+      const resData = await res.json();
+      if (resData && resData.success && resData.data) {
+        const d = resData.data;
+        if (Array.isArray(d.Clients) && d.Clients.length > 0) setItem(STORAGE_KEYS.CLIENTS, d.Clients);
+        if (Array.isArray(d.Events) && d.Events.length > 0) setItem(STORAGE_KEYS.EVENTS, d.Events);
+        if (Array.isArray(d.Payments) && d.Payments.length > 0) setItem(STORAGE_KEYS.PAYMENTS, d.Payments);
+        if (Array.isArray(d.Expenses) && d.Expenses.length > 0) setItem(STORAGE_KEYS.EXPENSES, d.Expenses);
+        if (Array.isArray(d.Team) && d.Team.length > 0) setItem(STORAGE_KEYS.TEAM, d.Team);
+        if (Array.isArray(d.EventTeam) && d.EventTeam.length > 0) setItem(STORAGE_KEYS.EVENT_TEAM, d.EventTeam);
+        if (Array.isArray(d.Tasks) && d.Tasks.length > 0) setItem(STORAGE_KEYS.TASKS, d.Tasks);
+        if (Array.isArray(d.Deliverables) && d.Deliverables.length > 0) setItem(STORAGE_KEYS.DELIVERABLES, d.Deliverables);
+        
+        localStorage.setItem(STORAGE_KEYS.LAST_SYNC, new Date().toISOString());
+        return d;
+      }
+    } catch (e) {
+      console.warn('Google Sheets live fetch error:', e);
+    }
+    return null;
   }
 };

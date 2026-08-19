@@ -211,6 +211,79 @@ function saveAllDataToSheets(allData) {
   return { success: true, timestamp: new Date().toISOString() };
 }
 
+function addRecordToSheet(tableName, record) {
+  if (!tableName || !record) return { success: false, error: 'Missing table or record' };
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName(tableName);
+  if (!sheet) return { success: false, error: 'Table sheet not found: ' + tableName };
+
+  const lastCol = sheet.getLastColumn();
+  if (lastCol === 0) return { success: false, error: 'Sheet header missing' };
+
+  const headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+  const rowValues = headers.map(h => record[h] !== undefined && record[h] !== null ? record[h] : '');
+  
+  sheet.appendRow(rowValues);
+  logAuditAction('Pravin Ghukshe', 'ADD_RECORD', tableName, String(record[headers[0]] || 'NEW'), 'Runtime record inserted');
+
+  return { success: true, message: 'Record saved to Google Sheet at runtime!' };
+}
+
+function updateRecordInSheet(tableName, recordId, record) {
+  if (!tableName || !recordId || !record) return { success: false, error: 'Missing table, ID, or record' };
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName(tableName);
+  if (!sheet) return { success: false, error: 'Table sheet not found: ' + tableName };
+
+  const data = sheet.getDataRange().getValues();
+  if (data.length <= 1) return addRecordToSheet(tableName, record);
+
+  const headers = data[0];
+  let targetRowIdx = -1;
+
+  for (let i = 1; i < data.length; i++) {
+    if (String(data[i][0]) === String(recordId)) {
+      targetRowIdx = i + 1;
+      break;
+    }
+  }
+
+  if (targetRowIdx === -1) {
+    return addRecordToSheet(tableName, record);
+  }
+
+  const rowValues = headers.map(h => record[h] !== undefined && record[h] !== null ? record[h] : '');
+  sheet.getRange(targetRowIdx, 1, 1, rowValues.length).setValues([rowValues]);
+
+  logAuditAction('Pravin Ghukshe', 'UPDATE_RECORD', tableName, String(recordId), 'Runtime record updated');
+  return { success: true, message: 'Record updated in Google Sheet at runtime!' };
+}
+
+function archiveRecordInSheet(tableName, recordId) {
+  if (!tableName || !recordId) return { success: false, error: 'Missing table or ID' };
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName(tableName);
+  if (!sheet) return { success: false, error: 'Table sheet not found: ' + tableName };
+
+  const data = sheet.getDataRange().getValues();
+  if (data.length <= 1) return { success: false, error: 'Sheet empty' };
+
+  let targetRowIdx = -1;
+  for (let i = 1; i < data.length; i++) {
+    if (String(data[i][0]) === String(recordId)) {
+      targetRowIdx = i + 1;
+      break;
+    }
+  }
+
+  if (targetRowIdx !== -1) {
+    sheet.deleteRow(targetRowIdx);
+    logAuditAction('Pravin Ghukshe', 'DELETE_RECORD', tableName, String(recordId), 'Runtime record deleted');
+  }
+
+  return { success: true, message: 'Record deleted from Google Sheet' };
+}
+
 function handleCalendarSync(eventRecord) {
   if (!eventRecord || !eventRecord.EventName || !eventRecord.EventDate) {
     return { success: false, error: 'Missing required event fields' };
