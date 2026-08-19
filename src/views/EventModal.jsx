@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
-import { X, Camera, Calendar, MapPin, UserPlus, Check } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { X, Camera, Calendar as CalendarIcon, MapPin, UserPlus, Check, MessageSquare, Plus, Trash2 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { generateWhatsAppURL, buildTeamNotificationMessage } from '../services/whatsappService';
 
 export default function EventModal({ isOpen, onClose, initialData = null }) {
-  const { clients, saveClient, saveEvent, showToast } = useApp();
+  const { clients, team, saveClient, saveEvent, saveEventTeamAssignment, showToast } = useApp();
+  const dateInputRef = useRef(null);
 
   const [selectedClientId, setSelectedClientId] = useState(initialData ? initialData.ClientID : '');
   const [newClientName, setNewClientName] = useState('');
@@ -20,7 +22,62 @@ export default function EventModal({ isOpen, onClose, initialData = null }) {
   const [contractValue, setContractValue] = useState(initialData ? initialData.TotalContractValue : 25000);
   const [notes, setNotes] = useState(initialData ? initialData.Notes : '');
 
+  // Optional Team Assignments State
+  const [assignedTeamMembers, setAssignedTeamMembers] = useState([]);
+
   if (!isOpen) return null;
+
+  const handleAddTeamRow = () => {
+    setAssignedTeamMembers(prev => [
+      ...prev,
+      { personId: '', personName: '', phone: '', role: 'Candid Photographer', agreedAmount: 5000 }
+    ]);
+  };
+
+  const handleRemoveTeamRow = (index) => {
+    setAssignedTeamMembers(prev => prev.filter((_, idx) => idx !== index));
+  };
+
+  const handleTeamMemberSelect = (index, personId) => {
+    const found = team.find(t => t.PersonID === personId);
+    setAssignedTeamMembers(prev => {
+      const copy = [...prev];
+      if (found) {
+        copy[index].personId = found.PersonID;
+        copy[index].personName = found.Name;
+        copy[index].phone = found.Phone || found.WhatsApp || '';
+        copy[index].role = found.Role || 'Photographer';
+      }
+      return copy;
+    });
+  };
+
+  const handleTeamFieldChange = (index, field, value) => {
+    setAssignedTeamMembers(prev => {
+      const copy = [...prev];
+      copy[index][field] = value;
+      return copy;
+    });
+  };
+
+  const handleSendWhatsAppNotice = (member) => {
+    const msg = buildTeamNotificationMessage({
+      teamMemberName: member.personName || 'Team Member',
+      role: member.role,
+      eventName: eventName || 'Shoot Booking',
+      eventDate: eventDate,
+      startTime: startTime,
+      venue: venue,
+      address: address,
+      googleMapsLink: mapsLink,
+      clientName: selectedClientId === 'NEW' ? newClientName : (clients.find(c => c.ClientID === selectedClientId)?.Name || ''),
+      clientPhone: selectedClientId === 'NEW' ? newClientPhone : (clients.find(c => c.ClientID === selectedClientId)?.Phone || ''),
+      agreedAmount: member.agreedAmount
+    });
+
+    const url = generateWhatsAppURL(member.phone || '8412850833', msg);
+    window.open(url, '_blank');
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -70,7 +127,24 @@ export default function EventModal({ isOpen, onClose, initialData = null }) {
       ProductionStatus: initialData ? initialData.ProductionStatus : 'BOOKED'
     };
 
-    saveEvent(payload);
+    const savedEvent = saveEvent(payload);
+
+    // Save optional team assignments if selected
+    if (savedEvent && assignedTeamMembers.length > 0) {
+      assignedTeamMembers.forEach(tm => {
+        if (tm.personId && tm.personName) {
+          saveEventTeamAssignment({
+            EventID: savedEvent.EventID,
+            PersonID: tm.personId,
+            PersonName: tm.personName,
+            Role: tm.role,
+            AgreedAmount: Number(tm.agreedAmount || 0),
+            PaidAmount: 0
+          });
+        }
+      });
+    }
+
     onClose();
   };
 
@@ -88,7 +162,7 @@ export default function EventModal({ isOpen, onClose, initialData = null }) {
               <h3 className="text-base font-extrabold text-white">
                 {initialData ? 'Edit Shoot Booking' : 'Book New Photography Event'}
               </h3>
-              <p className="text-xs text-zinc-400">CrystalSky Photography & Film</p>
+              <p className="text-xs text-zinc-400">CrystalSky Photography & Film (Pravin Ghukshe)</p>
             </div>
           </div>
           <button onClick={onClose} className="p-1.5 rounded-lg bg-zinc-900 text-zinc-400 hover:text-white">
@@ -128,13 +202,13 @@ export default function EventModal({ isOpen, onClose, initialData = null }) {
                   placeholder="Client Phone Number"
                   value={newClientPhone}
                   onChange={(e) => setNewClientPhone(e.target.value)}
-                  className="bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-white"
+                  className="bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-white font-mono"
                 />
               </div>
             )}
           </div>
 
-          {/* Event Details */}
+          {/* Event Name & Type */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block font-semibold text-zinc-300 mb-1">Event Name / Title *</label>
@@ -162,17 +236,32 @@ export default function EventModal({ isOpen, onClose, initialData = null }) {
             </div>
           </div>
 
-          {/* Date & Time */}
+          {/* Calendar Graphic Date Picker */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block font-semibold text-zinc-300 mb-1">Event Date *</label>
-              <input
-                type="date"
-                required
-                value={eventDate}
-                onChange={(e) => setEventDate(e.target.value)}
-                className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-500"
-              />
+              <label className="block font-semibold text-zinc-300 mb-1">Event Date (Calendar Picker) *</label>
+              <div className="relative flex items-center">
+                <input
+                  ref={dateInputRef}
+                  type="date"
+                  required
+                  value={eventDate}
+                  onChange={(e) => setEventDate(e.target.value)}
+                  className="w-full bg-zinc-900 border border-zinc-800 rounded-xl pl-3 pr-10 py-2 text-white font-mono focus:outline-none focus:border-amber-500"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (dateInputRef.current && dateInputRef.current.showPicker) {
+                      dateInputRef.current.showPicker();
+                    }
+                  }}
+                  title="Click to open interactive Graphic Calendar Picker"
+                  className="absolute right-2 p-1.5 rounded-lg bg-zinc-800 text-amber-400 hover:bg-zinc-700"
+                >
+                  <CalendarIcon className="w-4 h-4" />
+                </button>
+              </div>
             </div>
 
             <div>
@@ -181,7 +270,7 @@ export default function EventModal({ isOpen, onClose, initialData = null }) {
                 type="time"
                 value={startTime}
                 onChange={(e) => setStartTime(e.target.value)}
-                className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-500"
+                className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-white font-mono focus:outline-none focus:border-amber-500"
               />
             </div>
           </div>
@@ -218,23 +307,119 @@ export default function EventModal({ isOpen, onClose, initialData = null }) {
               placeholder="https://maps.app.goo.gl/..."
               value={mapsLink}
               onChange={(e) => setMapsLink(e.target.value)}
-              className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-500"
+              className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-500 font-mono text-[11px]"
             />
           </div>
 
           {/* Total Contract Value */}
           <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 space-y-1">
-            <label className="block font-bold text-amber-400">Total Contract Value (₹) *</label>
+            <label className="block font-bold text-amber-400">Total Contract Package Value (₹) *</label>
             <input
               type="number"
               required
               min="0"
               value={contractValue}
               onChange={(e) => setContractValue(e.target.value)}
-              placeholder="e.g. 100000"
+              placeholder="e.g. 150000"
               className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-white font-extrabold text-sm focus:outline-none focus:border-amber-500"
             />
-            <p className="text-[10px] text-amber-300/80">Can be edited anytime per client agreement.</p>
+          </div>
+
+          {/* OPTIONAL TEAM ASSIGNMENT SECTION WITH WHATSAPP DISPATCH */}
+          <div className="p-3.5 rounded-xl bg-zinc-900/90 border border-zinc-800 space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <span className="font-bold text-amber-400 block text-xs">Assign Shoot Team (Optional)</span>
+                <span className="text-[10px] text-zinc-400">Select team members & send direct WhatsApp notification</span>
+              </div>
+              <button
+                type="button"
+                onClick={handleAddTeamRow}
+                className="px-2.5 py-1 rounded-lg bg-amber-500/20 text-amber-400 border border-amber-500/40 text-[11px] font-bold flex items-center gap-1 hover:bg-amber-500/30"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                + Add Member
+              </button>
+            </div>
+
+            {assignedTeamMembers.length > 0 && (
+              <div className="space-y-2 pt-1">
+                {assignedTeamMembers.map((member, idx) => (
+                  <div key={idx} className="p-2.5 rounded-xl bg-zinc-950 border border-zinc-800 space-y-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                      {/* Select Member */}
+                      <div>
+                        <label className="block text-[10px] text-zinc-400 font-semibold mb-0.5">Team Member</label>
+                        {team.length > 0 ? (
+                          <select
+                            value={member.personId}
+                            onChange={(e) => handleTeamMemberSelect(idx, e.target.value)}
+                            className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-2 py-1 text-white text-[11px]"
+                          >
+                            <option value="">-- Choose Member --</option>
+                            {team.map(t => (
+                              <option key={t.PersonID} value={t.PersonID}>{t.Name} ({t.Role})</option>
+                            ))}
+                          </select>
+                        ) : (
+                          <input
+                            type="text"
+                            placeholder="Name (e.g. Amit)"
+                            value={member.personName}
+                            onChange={(e) => handleTeamFieldChange(idx, 'personName', e.target.value)}
+                            className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-2 py-1 text-white text-[11px]"
+                          />
+                        )}
+                      </div>
+
+                      {/* Role */}
+                      <div>
+                        <label className="block text-[10px] text-zinc-400 font-semibold mb-0.5">Role</label>
+                        <input
+                          type="text"
+                          placeholder="Role (e.g. Candid)"
+                          value={member.role}
+                          onChange={(e) => handleTeamFieldChange(idx, 'role', e.target.value)}
+                          className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-2 py-1 text-white text-[11px]"
+                        />
+                      </div>
+
+                      {/* Fee */}
+                      <div>
+                        <label className="block text-[10px] text-zinc-400 font-semibold mb-0.5">Agreed Fee (₹)</label>
+                        <input
+                          type="number"
+                          placeholder="5000"
+                          value={member.agreedAmount}
+                          onChange={(e) => handleTeamFieldChange(idx, 'agreedAmount', e.target.value)}
+                          className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-2 py-1 text-white font-bold text-[11px]"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-1 border-t border-zinc-900">
+                      {/* Direct WhatsApp Send Button */}
+                      <button
+                        type="button"
+                        onClick={() => handleSendWhatsAppNotice(member)}
+                        className="px-2.5 py-1 rounded-lg bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[10px] font-bold flex items-center gap-1.5 hover:bg-emerald-500/30"
+                      >
+                        <MessageSquare className="w-3.5 h-3.5" />
+                        Send WhatsApp Assignment Notice
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveTeamRow(idx)}
+                        className="p-1 text-rose-400 hover:text-rose-300"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Notes */}
