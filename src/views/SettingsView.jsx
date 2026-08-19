@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { Settings, Database, Calendar, Smartphone, Download, RefreshCw, Check, Trash2 } from 'lucide-react';
+import { Settings, Database, Calendar, Smartphone, Download, RefreshCw, Check, Trash2, Share2, MessageSquare } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { StorageService } from '../services/storageService';
+import { generateWhatsAppURL } from '../services/whatsappService';
 
 export default function SettingsView({ onOpenIntegrationsTest, onOpenSetupWizard }) {
-  const { settings, updateSettings, showToast, refreshData, clearDatabase, checkAdminPermission } = useApp();
+  const { settings, updateSettings, showToast, refreshData, clearDatabase } = useApp();
 
   const [ownerName, setOwnerName] = useState(settings.ownerName || 'Pravin Ghukshe');
   const [ownerPhone, setOwnerPhone] = useState(settings.ownerPhone || '8412850833');
@@ -13,7 +14,6 @@ export default function SettingsView({ onOpenIntegrationsTest, onOpenSetupWizard
 
   const handleSave = (e) => {
     e.preventDefault();
-    if (!checkAdminPermission()) return;
     updateSettings({
       ownerName,
       ownerPhone,
@@ -47,10 +47,35 @@ export default function SettingsView({ onOpenIntegrationsTest, onOpenSetupWizard
   };
 
   const handleClearData = () => {
-    if (!checkAdminPermission()) return;
     if (window.confirm('Are you sure you want to clear all data and reset to a clean empty database?')) {
       clearDatabase();
     }
+  };
+
+  // Generate 1-Click Mobile Cloud Sync Link
+  const mobileSyncUrl = scriptUrl
+    ? `${window.location.origin}${window.location.pathname}?scriptUrl=${encodeURIComponent(scriptUrl)}`
+    : '';
+
+  const handleSendMobileSyncWhatsApp = () => {
+    if (!mobileSyncUrl) {
+      alert('Please enter your Google Apps Script Web App URL first.');
+      return;
+    }
+
+    const msg = `⚡ *CRYSTALSKY OS - 1-CLICK MOBILE CLOUD SYNC LINK*
+
+Namaste Pravin ji,
+
+Open this link on your Mobile Phone to automatically sync all Laptop clients, shoots, and freelancers from Google Sheets:
+
+👇 *Click to Activate Mobile Sync:*
+${mobileSyncUrl}
+
+Pravin Ghukshe (8412850833)`;
+
+    const url = generateWhatsAppURL(ownerPhone, msg);
+    window.open(url, '_blank');
   };
 
   return (
@@ -118,16 +143,16 @@ export default function SettingsView({ onOpenIntegrationsTest, onOpenSetupWizard
           </form>
         </div>
 
-        {/* Google Apps Script & Integrations */}
+        {/* Google Apps Script & Mobile Sync Section */}
         <div className="p-6 rounded-2xl glass-panel space-y-4">
           <h3 className="text-sm font-bold text-white flex items-center gap-2">
             <Database className="w-4 h-4 text-amber-400" />
-            Google Sheets & API Integration
+            Google Sheets & Mobile Cloud Sync
           </h3>
 
           <div className="space-y-3 text-xs">
             <div>
-              <label className="block font-semibold text-zinc-300 mb-1">Google Apps Script Web App URL</label>
+              <label className="block font-semibold text-zinc-300 mb-1">Google Apps Script Web App URL *</label>
               <input
                 type="url"
                 placeholder="https://script.google.com/macros/s/.../exec"
@@ -137,19 +162,32 @@ export default function SettingsView({ onOpenIntegrationsTest, onOpenSetupWizard
               />
             </div>
 
+            {scriptUrl && (
+              <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 space-y-2">
+                <p className="text-[11px] text-emerald-400 font-bold flex items-center gap-1">
+                  <Smartphone className="w-4 h-4" />
+                  1-Click Mobile Cloud Sync Ready!
+                </p>
+                <p className="text-[10px] text-zinc-300">
+                  Send this link to your phone via WhatsApp. Opening it once on Mobile will connect your Google Sheet automatically!
+                </p>
+                <button
+                  type="button"
+                  onClick={handleSendMobileSyncWhatsApp}
+                  className="w-full py-2 rounded-lg bg-emerald-500 text-black font-extrabold text-[11px] flex items-center justify-center gap-1.5 hover:bg-emerald-400"
+                >
+                  <MessageSquare className="w-4 h-4" />
+                  Send 1-Click Mobile Sync Link to WhatsApp
+                </button>
+              </div>
+            )}
+
             <div className="pt-2 space-y-2">
               <button
                 onClick={onOpenIntegrationsTest}
                 className="w-full py-2.5 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/40 hover:bg-amber-500/30 text-xs font-bold flex items-center justify-center gap-2"
               >
                 Launch Integrations Test Page
-              </button>
-
-              <button
-                onClick={onOpenSetupWizard}
-                className="w-full py-2.5 rounded-xl bg-zinc-900 border border-zinc-800 hover:border-zinc-700 text-zinc-300 text-xs font-semibold flex items-center justify-center gap-2"
-              >
-                Open Setup Wizard
               </button>
             </div>
           </div>

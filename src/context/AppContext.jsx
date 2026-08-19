@@ -1,11 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
 import { StorageService } from '../services/storageService';
 import { AuthService } from '../services/authService';
-import { 
-  SAMPLE_CLIENTS, SAMPLE_EVENTS, SAMPLE_PAYMENTS, 
-  SAMPLE_EXPENSES, SAMPLE_TEAM, SAMPLE_EVENT_TEAM, 
-  SAMPLE_TASKS, SAMPLE_DELIVERABLES 
-} from '../data/sampleData';
 
 const AppContext = createContext();
 
@@ -23,7 +18,7 @@ export function AppProvider({ children }) {
     const result = AuthService.login(identifier, password);
     if (result.success) {
       setAuthSession(result.session);
-      showToast('🔒 Welcome Pravin Ghukshe! System unlocked successfully.');
+      showToast('🔒 Welcome Pravin Ghukshe! System unlocked.');
     }
     return result;
   };
@@ -89,18 +84,32 @@ export function AppProvider({ children }) {
     setAuditLogs(StorageService.getAuditLogs());
   };
 
-  // On App Mount: Fetch live data from Google Sheets if connected
+  // On App Mount: Auto-detect ?scriptUrl= parameter in URL or fetch live data from Google Sheets
   useEffect(() => {
-    const fetchLiveSheetsData = async () => {
-      if (settings.googleScriptUrl) {
+    const initializeCloudSync = async () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const paramScriptUrl = urlParams.get('scriptUrl');
+
+      let currentScriptUrl = settings.googleScriptUrl;
+
+      // If opened via Mobile Sync Link with ?scriptUrl=...
+      if (paramScriptUrl && paramScriptUrl !== currentScriptUrl) {
+        const updated = StorageService.saveSettings({ googleScriptUrl: paramScriptUrl });
+        setSettings(updated);
+        currentScriptUrl = paramScriptUrl;
+        showToast('⚡ Mobile Cloud Sync Activated from Link!');
+      }
+
+      if (currentScriptUrl) {
         const liveData = await StorageService.fetchLiveDataFromSheets();
         if (liveData) {
           refreshData();
-          showToast('Synced live data from Google Sheets at runtime!');
+          showToast('⚡ Synced live clients & shoots from Google Sheets!');
         }
       }
     };
-    fetchLiveSheetsData();
+
+    initializeCloudSync();
   }, []);
 
   // 1-Click Clear Database
