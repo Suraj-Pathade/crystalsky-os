@@ -2,29 +2,29 @@ import React from 'react';
 import { 
   LayoutDashboard, Calendar, Users, CreditCard, Receipt, 
   UserCheck, CheckSquare, PackageCheck, FileSpreadsheet, 
-  TrendingDown, TrendingUp, Settings, ShieldCheck, Camera, ChevronRight
+  TrendingDown, TrendingUp, Settings, ShieldCheck, Camera, ChevronRight, Lock
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import Logo from './Logo';
 
 export default function Sidebar() {
-  const { activeView, setActiveView, setSelectedEventId, setSelectedClientId } = useApp();
+  const { activeView, setActiveView, setSelectedEventId, setSelectedClientId, lockApp } = useApp();
 
   const navItems = [
-    { id: 'dashboard', label: 'Home Overview', icon: LayoutDashboard },
-    { id: 'events', label: 'Booking & Shoots', icon: Camera },
-    { id: 'clients', label: 'Grahak Directory', icon: Users },
+    { id: 'dashboard', label: 'Dashboard Overview', icon: LayoutDashboard },
+    { id: 'events', label: 'Shoots & Bookings', icon: Camera },
+    { id: 'clients', label: 'Client Directory', icon: Users },
     { id: 'payments', label: 'Client Payments', icon: CreditCard },
-    { id: 'expenses', label: 'Mahine Ka Kharcha', icon: Receipt },
-    { id: 'team', label: 'Freelancers & Team', icon: UserCheck },
-    { id: 'payables', label: 'Team Ko Dena Hai', icon: TrendingDown },
-    { id: 'receivables', label: 'Grahak Se Lena Hai', icon: TrendingUp },
-    { id: 'tasks', label: 'Kaam List & Tasks', icon: CheckSquare },
-    { id: 'deliverables', label: 'Album/Video Delivery', icon: PackageCheck },
+    { id: 'expenses', label: 'Monthly Expenses', icon: Receipt },
+    { id: 'team', label: 'Team & Freelancers', icon: UserCheck },
+    { id: 'payables', label: 'Freelancer Payables', icon: TrendingDown },
+    { id: 'receivables', label: 'Client Dues (Receivables)', icon: TrendingUp },
+    { id: 'tasks', label: 'Tasks & To-Dos', icon: CheckSquare },
+    { id: 'deliverables', label: 'Deliverables & Albums', icon: PackageCheck },
     { id: 'calendar', label: 'Shoot Calendar', icon: Calendar },
-    { id: 'reports', label: 'P&L Munafa Reports', icon: FileSpreadsheet },
-    { id: 'settings', label: 'Settings & Sync', icon: Settings },
-    { id: 'audit_log', label: 'System Audit Log', icon: ShieldCheck }
+    { id: 'reports', label: 'Financial P&L Reports', icon: FileSpreadsheet },
+    { id: 'settings', label: 'Settings & Cloud Sync', icon: Settings },
+    { id: 'audit_log', label: 'Security Audit Log', icon: ShieldCheck }
   ];
 
   const handleNavClick = (id) => {
@@ -41,14 +41,24 @@ export default function Sidebar() {
       </div>
 
       {/* Owner Profile Banner */}
-      <div className="mx-3 my-3 p-3 rounded-xl bg-zinc-900/90 border border-zinc-800/90 flex items-center gap-3">
-        <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-amber-400 to-amber-600 text-black font-extrabold text-xs flex items-center justify-center shadow-md">
-          PG
+      <div className="mx-3 my-3 p-3 rounded-xl bg-zinc-900/90 border border-zinc-800/90 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-amber-400 to-amber-600 text-black font-extrabold text-xs flex items-center justify-center shadow-md">
+            PG
+          </div>
+          <div className="min-w-0">
+            <p className="text-xs font-extrabold text-white truncate">Pravin Ghukshe</p>
+            <p className="text-[10px] text-amber-400 font-mono font-bold">8412850833</p>
+          </div>
         </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-xs font-extrabold text-white truncate">Pravin Ghukshe</p>
-          <p className="text-[10px] text-amber-400 font-mono font-bold">📱 8412850833</p>
-        </div>
+
+        <button
+          onClick={lockApp}
+          title="Lock System & Sign Out"
+          className="p-1.5 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-400 hover:bg-rose-500/20"
+        >
+          <Lock className="w-3.5 h-3.5" />
+        </button>
       </div>
 
       {/* Main Navigation Menu */}

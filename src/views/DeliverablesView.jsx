@@ -1,36 +1,69 @@
 import React, { useState } from 'react';
-import { PackageCheck, Plus, CheckCircle2, MessageSquare, AlertCircle } from 'lucide-react';
+import { PackageCheck, Plus, CheckCircle2, MessageSquare, AlertCircle, Edit3, ExternalLink } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { generateWhatsAppURL, buildPaymentReminderMessage } from '../services/whatsappService';
 
 export default function DeliverablesView() {
   const { deliverables, events, payments, saveDeliverable, showToast } = useApp();
   const [showModal, setShowModal] = useState(false);
+  const [editingItem, setEditingItem] = useState(null);
+
   const [eventId, setEventId] = useState('');
   const [type, setType] = useState('Photos');
   const [status, setStatus] = useState('IN PROGRESS');
   const [dueDate, setDueDate] = useState(new Date().toISOString().split('T')[0]);
+  const [driveUrl, setDriveUrl] = useState('');
+  const [notes, setNotes] = useState('');
+
+  const handleOpenCreate = () => {
+    setEditingItem(null);
+    setEventId('');
+    setType('Photos');
+    setStatus('IN PROGRESS');
+    setDueDate(new Date().toISOString().split('T')[0]);
+    setDriveUrl('');
+    setNotes('');
+    setShowModal(true);
+  };
+
+  const handleOpenEdit = (item) => {
+    setEditingItem(item);
+    setEventId(item.EventID || '');
+    setType(item.Type || 'Photos');
+    setStatus(item.Status || 'IN PROGRESS');
+    setDueDate(item.DueDate || new Date().toISOString().split('T')[0]);
+    setDriveUrl(item.DriveURL || item.Notes || '');
+    setNotes(item.Notes || '');
+    setShowModal(true);
+  };
 
   const handleStatusChange = (item, newStatus) => {
     saveDeliverable({ ...item, Status: newStatus });
     showToast(`Deliverable "${item.Type}" updated to ${newStatus}`);
   };
 
-  const handleCreate = (e) => {
+  const handleSave = (e) => {
     e.preventDefault();
-    if (!eventId) return;
+    if (!eventId) {
+      alert('Please select an event');
+      return;
+    }
 
     const ev = events.find(e => e.EventID === eventId);
 
-    saveDeliverable({
+    const payload = {
+      DeliverableID: editingItem ? editingItem.DeliverableID : undefined,
       EventID: eventId,
-      EventName: ev ? ev.EventName : '',
-      ClientName: ev ? ev.ClientName : '',
+      EventName: ev ? ev.EventName : (editingItem ? editingItem.EventName : ''),
+      ClientName: ev ? ev.ClientName : (editingItem ? editingItem.ClientName : ''),
       Type: type,
       Status: status,
-      DueDate: dueDate
-    });
+      DueDate: dueDate,
+      DriveURL: driveUrl,
+      Notes: notes
+    };
 
+    saveDeliverable(payload);
     setShowModal(false);
   };
 
@@ -49,11 +82,11 @@ export default function DeliverablesView() {
         </div>
 
         <button
-          onClick={() => setShowModal(true)}
+          onClick={handleOpenCreate}
           className="btn-gold px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 shadow-lg"
         >
           <Plus className="w-4 h-4" />
-          + Track Deliverable
+          + Track New Deliverable
         </button>
       </div>
 
@@ -66,7 +99,7 @@ export default function DeliverablesView() {
             Log raw photos, edited videos, or printed albums to track delivery deadlines.
           </p>
           <button
-            onClick={() => setShowModal(true)}
+            onClick={handleOpenCreate}
             className="btn-gold px-4 py-2 rounded-xl text-xs font-bold inline-flex items-center gap-1.5"
           >
             <Plus className="w-4 h-4" />
@@ -100,26 +133,54 @@ export default function DeliverablesView() {
             };
 
             return (
-              <div key={deliv.DeliverableID} className="p-4 rounded-2xl glass-panel space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="px-2.5 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-bold">
-                    {deliv.Type}
-                  </span>
-                  <select
-                    value={deliv.Status}
-                    onChange={(e) => handleStatusChange(deliv, e.target.value)}
-                    className="bg-zinc-900 border border-zinc-800 text-xs text-white rounded-lg px-2 py-1 font-bold"
-                  >
-                    <option value="NOT STARTED">NOT STARTED</option>
-                    <option value="IN PROGRESS">IN PROGRESS</option>
-                    <option value="READY">READY</option>
-                    <option value="DELIVERED">DELIVERED</option>
-                  </select>
-                </div>
+              <div key={deliv.DeliverableID} className="p-4 rounded-2xl glass-panel space-y-3 flex flex-col justify-between">
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="px-2.5 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-bold">
+                      {deliv.Type}
+                    </span>
 
-                <div>
-                  <h3 className="font-bold text-white text-sm">{deliv.EventName || 'Photography Shoot'}</h3>
-                  <p className="text-xs text-zinc-400">Client: {deliv.ClientName}</p>
+                    <div className="flex items-center gap-1.5">
+                      <select
+                        value={deliv.Status}
+                        onChange={(e) => handleStatusChange(deliv, e.target.value)}
+                        className="bg-zinc-900 border border-zinc-800 text-[11px] text-white rounded-lg px-2 py-1 font-bold"
+                      >
+                        <option value="NOT STARTED">NOT STARTED</option>
+                        <option value="IN PROGRESS">IN PROGRESS</option>
+                        <option value="ALBUM DESIGN">ALBUM DESIGN</option>
+                        <option value="PRINTING">PRINTING</option>
+                        <option value="READY">READY</option>
+                        <option value="DELIVERED">DELIVERED</option>
+                      </select>
+
+                      <button
+                        onClick={() => handleOpenEdit(deliv)}
+                        className="p-1 rounded-lg bg-zinc-900 border border-zinc-800 text-amber-400 hover:bg-amber-500/20"
+                        title="Edit Deliverable / Album Details"
+                      >
+                        <Edit3 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <h3 className="font-bold text-white text-sm">{deliv.EventName || 'Photography Shoot'}</h3>
+                    <p className="text-xs text-zinc-400">Client: {deliv.ClientName}</p>
+                    <p className="text-[11px] text-zinc-500 font-mono mt-0.5">Due Date: {deliv.DueDate || 'N/A'}</p>
+                  </div>
+
+                  {deliv.DriveURL && (
+                    <a
+                      href={deliv.DriveURL}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-[11px] text-amber-400 underline font-mono flex items-center gap-1"
+                    >
+                      <ExternalLink className="w-3 h-3" />
+                      Open Album / Drive Link
+                    </a>
+                  )}
                 </div>
 
                 {isFinalPending && (
@@ -143,66 +204,94 @@ export default function DeliverablesView() {
         </div>
       )}
 
-      {/* Deliverable Modal */}
+      {/* Deliverable Edit / Add Modal */}
       {showModal && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-zinc-950 border border-zinc-800 rounded-2xl w-full max-w-md p-5 animate-modal shadow-2xl">
-            <h3 className="text-sm font-bold text-white mb-3">Add Event Deliverable</h3>
-            <form onSubmit={handleCreate} className="space-y-3 text-xs">
-              <select
-                required
-                value={eventId}
-                onChange={(e) => setEventId(e.target.value)}
-                className="w-full bg-zinc-900 border border-zinc-800 text-white rounded-xl px-3 py-2"
-              >
-                <option value="">-- Select Event * --</option>
-                {events.map(ev => (
-                  <option key={ev.EventID} value={ev.EventID}>{ev.EventName} ({ev.ClientName})</option>
-                ))}
-              </select>
+          <div className="bg-zinc-950 border border-zinc-800 rounded-2xl w-full max-w-md p-5 animate-modal shadow-2xl space-y-3">
+            <h3 className="text-sm font-bold text-white">
+              {editingItem ? 'Edit Deliverable / Album Details' : 'Add Event Deliverable'}
+            </h3>
 
-              <select
-                value={type}
-                onChange={(e) => setType(e.target.value)}
-                className="w-full bg-zinc-900 border border-zinc-800 text-white rounded-xl px-3 py-2"
-              >
-                <option value="Photos">Edited Photos</option>
-                <option value="Video">Full Video / Film</option>
-                <option value="Reel">Instagram Reel</option>
-                <option value="Album">Photobook Album</option>
-                <option value="Other">Other Deliverable</option>
-              </select>
+            <form onSubmit={handleSave} className="space-y-3 text-xs">
+              <div>
+                <label className="block text-zinc-300 font-semibold mb-1">Select Event *</label>
+                <select
+                  required
+                  value={eventId}
+                  onChange={(e) => setEventId(e.target.value)}
+                  className="w-full bg-zinc-900 border border-zinc-800 text-white rounded-xl px-3 py-2"
+                >
+                  <option value="">-- Select Event * --</option>
+                  {events.map(ev => (
+                    <option key={ev.EventID} value={ev.EventID}>{ev.EventName} ({ev.ClientName})</option>
+                  ))}
+                </select>
+              </div>
 
-              <select
-                value={status}
-                onChange={(e) => setStatus(e.target.value)}
-                className="w-full bg-zinc-900 border border-zinc-800 text-white rounded-xl px-3 py-2"
-              >
-                <option value="NOT STARTED">NOT STARTED</option>
-                <option value="IN PROGRESS">IN PROGRESS</option>
-                <option value="READY">READY</option>
-                <option value="DELIVERED">DELIVERED</option>
-              </select>
+              <div>
+                <label className="block text-zinc-300 font-semibold mb-1">Deliverable Type</label>
+                <select
+                  value={type}
+                  onChange={(e) => setType(e.target.value)}
+                  className="w-full bg-zinc-900 border border-zinc-800 text-white rounded-xl px-3 py-2"
+                >
+                  <option value="Photos">Edited Photos</option>
+                  <option value="Video">Full Video / Film</option>
+                  <option value="Reel">Instagram Reel</option>
+                  <option value="Album">Photobook Album</option>
+                  <option value="Other">Other Deliverable</option>
+                </select>
+              </div>
 
-              <input
-                type="date"
-                required
-                value={dueDate}
-                onChange={(e) => setDueDate(e.target.value)}
-                className="w-full bg-zinc-900 border border-zinc-800 text-white rounded-xl px-3 py-2"
-              />
+              <div>
+                <label className="block text-zinc-300 font-semibold mb-1">Production Status</label>
+                <select
+                  value={status}
+                  onChange={(e) => setStatus(e.target.value)}
+                  className="w-full bg-zinc-900 border border-zinc-800 text-white rounded-xl px-3 py-2"
+                >
+                  <option value="NOT STARTED">NOT STARTED</option>
+                  <option value="IN PROGRESS">IN PROGRESS</option>
+                  <option value="ALBUM DESIGN">ALBUM DESIGN</option>
+                  <option value="PRINTING">PRINTING</option>
+                  <option value="READY">READY</option>
+                  <option value="DELIVERED">DELIVERED</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-zinc-300 font-semibold mb-1">Delivery Due Date</label>
+                <input
+                  type="date"
+                  required
+                  value={dueDate}
+                  onChange={(e) => setDueDate(e.target.value)}
+                  className="w-full bg-zinc-900 border border-zinc-800 text-white rounded-xl px-3 py-2 font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block text-zinc-300 font-semibold mb-1">Google Drive / Album Preview Link (Optional)</label>
+                <input
+                  type="url"
+                  placeholder="https://drive.google.com/..."
+                  value={driveUrl}
+                  onChange={(e) => setDriveUrl(e.target.value)}
+                  className="w-full bg-zinc-900 border border-zinc-800 text-white rounded-xl px-3 py-2 font-mono text-[11px]"
+                />
+              </div>
 
               <div className="flex gap-2 pt-2">
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="flex-1 py-2 rounded-xl bg-zinc-900 text-zinc-400 text-xs"
+                  className="flex-1 py-2.5 rounded-xl bg-zinc-900 text-zinc-400 text-xs font-bold"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 btn-gold py-2 rounded-xl text-xs font-bold"
+                  className="flex-1 btn-gold py-2.5 rounded-xl text-xs font-bold"
                 >
                   Save Deliverable
                 </button>

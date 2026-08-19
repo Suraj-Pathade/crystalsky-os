@@ -1,12 +1,9 @@
 /**
- * Hinglish WhatsApp Integration & URL Generator Service for CrystalSky OS
+ * English WhatsApp Integration & URL Generator Service for CrystalSky OS
  * Owner: Pravin Ghukshe (8412850833)
  * Brand: CrystalSky Photography & Film
  */
 
-/**
- * Format phone number to international wa.me format (India standard +91)
- */
 export function formatPhoneNumber(phone) {
   if (!phone) return '918412850833';
   let cleaned = String(phone).replace(/\D/g, '');
@@ -19,9 +16,6 @@ export function formatPhoneNumber(phone) {
   return cleaned;
 }
 
-/**
- * Generate click-to-chat WhatsApp deep link
- */
 export function generateWhatsAppURL(phone, message) {
   const formattedPhone = formatPhoneNumber(phone);
   const encodedMessage = encodeURIComponent(message);
@@ -29,7 +23,7 @@ export function generateWhatsAppURL(phone, message) {
 }
 
 /**
- * Client Payment Reminder Message Generator (Hinglish)
+ * Client Payment Reminder Message Generator (English)
  */
 export function buildPaymentReminderMessage({
   clientName,
@@ -55,32 +49,32 @@ export function buildPaymentReminderMessage({
   return `${header}
 *CrystalSky Photography & Film*
 
-Namaste ${clientName || 'Client'} ji,
+Dear ${clientName || 'Client'},
 
-Yeh aapki CrystalSky Photography booking payment ka ek friendly reminder hai:
+This is a friendly payment reminder regarding your photography booking with CrystalSky:
 
-📸 *Shoot Ki Jankari:*
+📸 *Shoot Booking Details:*
 • Event Name: *${eventName || 'Photography Booking'}*
-• Date: ${eventDate || 'N/A'}
+• Event Date: ${eventDate || 'N/A'}
 
-💰 *Payment Ka Hisab:*
+💰 *Payment Statement:*
 • Total Shoot Contract: ₹${formattedContract}
-• Abhi Tak Jama Hua: ₹${formattedPaid}
-• *Baaki Pending Balance: ₹${formattedPending}*
+• Total Amount Paid: ₹${formattedPaid}
+• *Remaining Balance Dues: ₹${formattedPending}*
 ${dueDate ? `• Due Date: ${dueDate}` : ''}
 
-${isFinalPayment ? 'Aapka Album aur Video delivery ke liye tayar hai. Kripya baaki balance clear karein.' : 'Kripya baaki payment jald se jald clear karein.'}
+${isFinalPayment ? 'Your Album & Video deliverables are ready for delivery. Kindly clear the remaining balance.' : 'Kindly clear the remaining balance at your earliest convenience.'}
 
-UPI / Bank details ke liye hume reply karein.
+Reply to this message for UPI or Bank Account details.
 
-Bahut Bahut Dhanyawad,
+Thank you very much,
 *Pravin Ghukshe*
 CrystalSky Photography & Film
 📱 Contact / WhatsApp: 8412850833`;
 }
 
 /**
- * Client Payment Received Confirmation Receipt Message (Hinglish)
+ * Client Payment Received Confirmation Receipt Message (English)
  */
 export function buildPaymentConfirmationMessage({
   clientName,
@@ -101,22 +95,22 @@ export function buildPaymentConfirmationMessage({
   return `✅ *PAYMENT RECEIPT CONFIRMATION*
 *CrystalSky Photography & Film*
 
-Namaste ${clientName || 'Grahak'} ji,
+Dear ${clientName || 'Client'},
 
-Hame aapka payment mil gaya hai! Receipt details neeche hain:
+We have successfully received your payment! Receipt details:
 
-🧾 *Received Payment:*
-• Mil Gaya Amount: *₹${amountStr}*
+🧾 *Payment Received Details:*
+• Amount Received: *₹${amountStr}*
 • Payment Mode: ${paymentMethod || 'UPI / Transfer'} (${paymentType || 'Payment'})
 ${referenceNumber ? `• Txn / Ref ID: ${referenceNumber}` : ''}
-• Shoot / Event: ${eventName || 'Booking'}
+• Event / Shoot: ${eventName || 'Booking'}
 
-📊 *Aapka Account Balance Summary:*
-• Total Shoot Package: ₹${contractStr}
-• Kul Jama Hua: ₹${paidStr}
-• *Baaki Pending Balance: ₹${pendingStr}*
+📊 *Account Balance Summary:*
+• Total Package Contract: ₹${contractStr}
+• Total Amount Paid: ₹${paidStr}
+• *Remaining Pending Balance: ₹${pendingStr}*
 
-${Number(totalPending || 0) === 0 ? '✨ *Aapka poora payment clear ho gaya hai! CrystalSky Photography ko chunne ke liye Dhanyawad!*' : 'Payment dene ke liye Dhanyawad!'}
+${Number(totalPending || 0) === 0 ? '✨ *Your payment is completely cleared! Thank you for choosing CrystalSky Photography!*' : 'Thank you for your payment!'}
 
 Warm Regards,
 *Pravin Ghukshe*
@@ -125,7 +119,7 @@ CrystalSky Photography & Film
 }
 
 /**
- * Team Member Event Assignment Notification Message (Hinglish)
+ * Team Member Event Assignment Notification Message (English)
  */
 export function buildTeamNotificationMessage({
   teamMemberName,
@@ -148,34 +142,34 @@ export function buildTeamNotificationMessage({
   return `📸 *NEW SHOOT ASSIGNMENT DETAILS*
 *CrystalSky Photography & Film*
 
-Namaste ${teamMemberName},
+Dear ${teamMemberName},
 
-Aapko CrystalSky Photography ki shoot assignment assign ki gayi hai:
+You have been assigned to a CrystalSky photography shoot:
 
-🎬 *Shoot Ki Jankari:*
-• Shoot / Event: *${eventName || 'Shoot Assignment'}*
-• Aapka Role: *${role || 'Team Member'}*
+🎬 *Assignment Details:*
+• Event / Shoot: *${eventName || 'Shoot Assignment'}*
+• Your Assigned Role: *${role || 'Team Member'}*
 • Date: ${eventDate || 'N/A'}
 • Time: ${startTime || 'TBD'} ${endTime ? `- ${endTime}` : ''}
 • Reporting Time: *${reportingTime || startTime || 'TBD'}*
 
 📍 *Venue Details:*
-• Venue Name: ${venue || 'N/A'}
-• Location Address: ${address || 'N/A'}
+• Venue: ${venue || 'N/A'}
+• Address: ${address || 'N/A'}
 ${googleMapsLink ? `• Google Maps Link: ${googleMapsLink}` : ''}
 
-👤 *Client Information:*
+👤 *Client Details:*
 • Client Name: ${clientName || 'N/A'}
 • Contact: ${clientPhone || 'N/A'}
 
-💵 *Shoot Remuneration:*
-• Agreed Shoot Fees: ₹${agreedStr}
+💵 *Shoot Fee:*
+• Agreed Shoot Fee: ₹${agreedStr}
 
 ${notes ? `📝 *Special Instructions:* ${notes}` : ''}
 
-Kripya time par pahuchein aur is message ka reply dekar confirm karein!
+Please report on time and reply to confirm your assignment!
 
-Dhanyawad,
+Thank you,
 *Pravin Ghukshe*
 CrystalSky Photography & Film
 📱 Contact / WhatsApp: 8412850833`;

@@ -1,10 +1,10 @@
 import React, { useState, useRef } from 'react';
-import { X, Camera, Calendar as CalendarIcon, MapPin, UserPlus, Check, MessageSquare, Plus, Trash2 } from 'lucide-react';
+import { X, Camera, Calendar as CalendarIcon, MapPin, UserPlus, Check, MessageSquare, Plus, Trash2, CreditCard, DollarSign } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { generateWhatsAppURL, buildTeamNotificationMessage } from '../services/whatsappService';
 
 export default function EventModal({ isOpen, onClose, initialData = null }) {
-  const { clients, team, saveClient, saveEvent, saveEventTeamAssignment, showToast } = useApp();
+  const { clients, team, saveClient, saveEvent, savePayment, saveEventTeamAssignment, showToast } = useApp();
   const dateInputRef = useRef(null);
 
   const [selectedClientId, setSelectedClientId] = useState(initialData ? initialData.ClientID : '');
@@ -19,13 +19,21 @@ export default function EventModal({ isOpen, onClose, initialData = null }) {
   const [address, setAddress] = useState(initialData ? initialData.Address : '');
   const [city, setCity] = useState(initialData ? initialData.City : 'Nagpur');
   const [mapsLink, setMapsLink] = useState(initialData ? initialData.GoogleMapsLink : '');
-  const [contractValue, setContractValue] = useState(initialData ? initialData.TotalContractValue : 25000);
+  
+  // Package Value & Advance Payment
+  const [contractValue, setContractValue] = useState(initialData ? initialData.TotalContractValue : 50000);
+  const [advanceAmount, setAdvanceAmount] = useState(initialData ? 0 : 15000);
+  const [advanceMethod, setAdvanceMethod] = useState('UPI');
+
   const [notes, setNotes] = useState(initialData ? initialData.Notes : '');
 
   // Optional Team Assignments State
   const [assignedTeamMembers, setAssignedTeamMembers] = useState([]);
 
   if (!isOpen) return null;
+
+  // Real-time automatic remaining dues calculation
+  const remainingDues = Math.max(0, Number(contractValue || 0) - Number(advanceAmount || 0));
 
   const handleAddTeamRow = () => {
     setAssignedTeamMembers(prev => [
@@ -88,7 +96,7 @@ export default function EventModal({ isOpen, onClose, initialData = null }) {
 
     if (clientID === 'NEW') {
       if (!newClientName || !newClientPhone) {
-        alert('Please fill new client name and phone number');
+        alert('Please enter new client name and phone number');
         return;
       }
       const savedClient = saveClient({ Name: newClientName, Phone: newClientPhone });
@@ -104,7 +112,7 @@ export default function EventModal({ isOpen, onClose, initialData = null }) {
     }
 
     if (!eventName || !clientID) {
-      alert('Please fill event name and select/create a client.');
+      alert('Please select or create a client and enter the shoot name.');
       return;
     }
 
@@ -128,6 +136,21 @@ export default function EventModal({ isOpen, onClose, initialData = null }) {
     };
 
     const savedEvent = saveEvent(payload);
+
+    // Record Advance Payment automatically if advanceAmount > 0 and creating new booking
+    if (savedEvent && !initialData && Number(advanceAmount) > 0) {
+      savePayment({
+        EventID: savedEvent.EventID,
+        ClientID: savedEvent.ClientID,
+        ClientName: savedEvent.ClientName,
+        EventName: savedEvent.EventName,
+        PaymentDate: new Date().toISOString().split('T')[0],
+        Amount: Number(advanceAmount),
+        PaymentType: 'Advance',
+        PaymentMethod: advanceMethod,
+        Notes: `Advance payment recorded at shoot booking. Remaining dues: ₹${remainingDues.toLocaleString('en-IN')}`
+      });
+    }
 
     // Save optional team assignments if selected
     if (savedEvent && assignedTeamMembers.length > 0) {
@@ -160,9 +183,9 @@ export default function EventModal({ isOpen, onClose, initialData = null }) {
             </div>
             <div>
               <h3 className="text-base font-extrabold text-white">
-                {initialData ? 'Edit Shoot Booking' : 'Book New Photography Event'}
+                {initialData ? 'Edit Shoot Details' : 'Book New Photography Event'}
               </h3>
-              <p className="text-xs text-zinc-400">CrystalSky Photography & Film (Pravin Ghukshe)</p>
+              <p className="text-xs text-zinc-400">CrystalSky Photography & Film</p>
             </div>
           </div>
           <button onClick={onClose} className="p-1.5 rounded-lg bg-zinc-900 text-zinc-400 hover:text-white">
@@ -192,7 +215,7 @@ export default function EventModal({ isOpen, onClose, initialData = null }) {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2">
                 <input
                   type="text"
-                  placeholder="New Client Full Name"
+                  placeholder="Client Full Name"
                   value={newClientName}
                   onChange={(e) => setNewClientName(e.target.value)}
                   className="bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-white"
@@ -211,7 +234,7 @@ export default function EventModal({ isOpen, onClose, initialData = null }) {
           {/* Event Name & Type */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block font-semibold text-zinc-300 mb-1">Event Name / Title *</label>
+              <label className="block font-semibold text-zinc-300 mb-1">Shoot / Event Name *</label>
               <input
                 type="text"
                 required
@@ -236,10 +259,10 @@ export default function EventModal({ isOpen, onClose, initialData = null }) {
             </div>
           </div>
 
-          {/* Calendar Graphic Date Picker */}
+          {/* Graphic Calendar Date Picker */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block font-semibold text-zinc-300 mb-1">Event Date (Calendar Picker) *</label>
+              <label className="block font-semibold text-zinc-300 mb-1">Shoot Date (Graphic Calendar Picker) *</label>
               <div className="relative flex items-center">
                 <input
                   ref={dateInputRef}
@@ -256,7 +279,7 @@ export default function EventModal({ isOpen, onClose, initialData = null }) {
                       dateInputRef.current.showPicker();
                     }
                   }}
-                  title="Click to open interactive Graphic Calendar Picker"
+                  title="Open Graphic Calendar Picker"
                   className="absolute right-2 p-1.5 rounded-lg bg-zinc-800 text-amber-400 hover:bg-zinc-700"
                 >
                   <CalendarIcon className="w-4 h-4" />
@@ -311,18 +334,66 @@ export default function EventModal({ isOpen, onClose, initialData = null }) {
             />
           </div>
 
-          {/* Total Contract Value */}
-          <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 space-y-1">
-            <label className="block font-bold text-amber-400">Total Contract Package Value (₹) *</label>
-            <input
-              type="number"
-              required
-              min="0"
-              value={contractValue}
-              onChange={(e) => setContractValue(e.target.value)}
-              placeholder="e.g. 150000"
-              className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-white font-extrabold text-sm focus:outline-none focus:border-amber-500"
-            />
+          {/* TOTAL CONTRACT VALUE & ADVANCE PAYMENT (REAL-TIME REMAINING CALCULATION) */}
+          <div className="p-4 rounded-xl bg-zinc-900/90 border border-zinc-800 space-y-3">
+            <h4 className="font-bold text-amber-400 text-xs flex items-center gap-1.5">
+              <CreditCard className="w-4 h-4" />
+              Financial Contract & Advance Payment Details
+            </h4>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block font-semibold text-zinc-300 mb-1">Total Package Price (₹) *</label>
+                <input
+                  type="number"
+                  required
+                  min="0"
+                  value={contractValue}
+                  onChange={(e) => setContractValue(e.target.value)}
+                  placeholder="100000"
+                  className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-white font-extrabold text-sm focus:outline-none focus:border-amber-500"
+                />
+              </div>
+
+              {!initialData && (
+                <div>
+                  <label className="block font-semibold text-zinc-300 mb-1">Advance Received Now (₹)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={advanceAmount}
+                    onChange={(e) => setAdvanceAmount(e.target.value)}
+                    placeholder="15000"
+                    className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-emerald-400 font-extrabold text-sm focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
+              )}
+            </div>
+
+            {!initialData && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                <div>
+                  <label className="block font-semibold text-zinc-300 mb-1">Advance Payment Method</label>
+                  <select
+                    value={advanceMethod}
+                    onChange={(e) => setAdvanceMethod(e.target.value)}
+                    className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-white text-xs"
+                  >
+                    <option value="UPI">UPI (GPay / PhonePe / Paytm)</option>
+                    <option value="Cash">Cash</option>
+                    <option value="Bank Transfer">Bank Transfer (IMPS / NEFT)</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+
+                <div className="p-2.5 rounded-xl bg-zinc-950 border border-zinc-800 flex flex-col justify-center">
+                  <span className="text-[10px] text-zinc-400 font-bold uppercase">Remaining Dues Balance</span>
+                  <span className="text-sm font-extrabold text-amber-400">
+                    ₹{remainingDues.toLocaleString('en-IN')}
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* OPTIONAL TEAM ASSIGNMENT SECTION WITH WHATSAPP DISPATCH */}
@@ -347,7 +418,6 @@ export default function EventModal({ isOpen, onClose, initialData = null }) {
                 {assignedTeamMembers.map((member, idx) => (
                   <div key={idx} className="p-2.5 rounded-xl bg-zinc-950 border border-zinc-800 space-y-2">
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                      {/* Select Member */}
                       <div>
                         <label className="block text-[10px] text-zinc-400 font-semibold mb-0.5">Team Member</label>
                         {team.length > 0 ? (
@@ -372,7 +442,6 @@ export default function EventModal({ isOpen, onClose, initialData = null }) {
                         )}
                       </div>
 
-                      {/* Role */}
                       <div>
                         <label className="block text-[10px] text-zinc-400 font-semibold mb-0.5">Role</label>
                         <input
@@ -384,7 +453,6 @@ export default function EventModal({ isOpen, onClose, initialData = null }) {
                         />
                       </div>
 
-                      {/* Fee */}
                       <div>
                         <label className="block text-[10px] text-zinc-400 font-semibold mb-0.5">Agreed Fee (₹)</label>
                         <input
@@ -398,7 +466,6 @@ export default function EventModal({ isOpen, onClose, initialData = null }) {
                     </div>
 
                     <div className="flex items-center justify-between pt-1 border-t border-zinc-900">
-                      {/* Direct WhatsApp Send Button */}
                       <button
                         type="button"
                         onClick={() => handleSendWhatsAppNotice(member)}
@@ -441,7 +508,7 @@ export default function EventModal({ isOpen, onClose, initialData = null }) {
               className="w-full btn-gold py-3 rounded-xl font-bold text-xs flex items-center justify-center gap-2"
             >
               <Check className="w-4 h-4" />
-              Save Event Booking
+              Save Shoot Event & Record Advance Payment
             </button>
           </div>
         </form>
