@@ -15,36 +15,27 @@ export function AppProvider({ children }) {
   const [selectedClientId, setSelectedClientId] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [toastMessage, setToastMessage] = useState(null);
-  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
 
-  // Security Auth State (pravinghukshephotography@gmail.com = Admin)
-  const [currentUser, setCurrentUser] = useState(() => AuthService.getCurrentUser());
+  // Security Auth Session State
+  const [authSession, setAuthSession] = useState(() => AuthService.getCurrentSession());
 
-  const loginUser = (email, name) => {
-    const user = AuthService.loginWithEmail(email, name);
-    setCurrentUser(user);
-    return user;
-  };
-
-  const logoutUser = () => {
-    const guest = AuthService.logout();
-    setCurrentUser(guest);
-    showToast('Signed out. You are now in View-Only Guest Mode.');
-  };
-
-  const isAdmin = useMemo(() => {
-    return AuthService.isAdmin(currentUser);
-  }, [currentUser]);
-
-  // Check permission before mutating data
-  const checkAdminPermission = () => {
-    if (!isAdmin) {
-      showToast('🔒 Access Denied: Only pravinghukshephotography@gmail.com has edit permissions. You are in View-Only Mode.', 'warning');
-      setIsLoginModalOpen(true);
-      return false;
+  const loginWithPassword = (identifier, password) => {
+    const result = AuthService.login(identifier, password);
+    if (result.success) {
+      setAuthSession(result.session);
+      showToast('🔒 Welcome Pravin Ghukshe! System unlocked successfully.');
     }
-    return true;
+    return result;
   };
+
+  const lockApp = () => {
+    AuthService.logout();
+    setAuthSession({ isLoggedIn: false, user: null });
+    showToast('🔒 System locked.');
+  };
+
+  const isAuthenticated = authSession.isLoggedIn;
+  const currentUser = authSession.user;
 
   // Light / Dark Mode state
   const [themeMode, setThemeMode] = useState(() => {
@@ -112,39 +103,21 @@ export function AppProvider({ children }) {
     fetchLiveSheetsData();
   }, []);
 
-  // 1-Click Load Sample Demo Data
-  const loadDemoData = () => {
-    if (!checkAdminPermission()) return;
-    localStorage.setItem('crystalsky_clients', JSON.stringify(SAMPLE_CLIENTS));
-    localStorage.setItem('crystalsky_events', JSON.stringify(SAMPLE_EVENTS));
-    localStorage.setItem('crystalsky_payments', JSON.stringify(SAMPLE_PAYMENTS));
-    localStorage.setItem('crystalsky_expenses', JSON.stringify(SAMPLE_EXPENSES));
-    localStorage.setItem('crystalsky_team', JSON.stringify(SAMPLE_TEAM));
-    localStorage.setItem('crystalsky_event_team', JSON.stringify(SAMPLE_EVENT_TEAM));
-    localStorage.setItem('crystalsky_tasks', JSON.stringify(SAMPLE_TASKS));
-    localStorage.setItem('crystalsky_deliverables', JSON.stringify(SAMPLE_DELIVERABLES));
-    refreshData();
-    showToast('Loaded realistic CrystalSky sample data!');
-  };
-
   // 1-Click Clear Database
   const clearDatabase = () => {
-    if (!checkAdminPermission()) return;
     StorageService.clearAllData();
     refreshData();
     showToast('Cleared database to empty state.');
   };
 
-  // Actions with Permission Checks
+  // Actions
   const updateSettings = (newSettings) => {
-    if (!checkAdminPermission()) return;
     const updated = StorageService.saveSettings(newSettings);
     setSettings(updated);
     showToast('Settings saved successfully!');
   };
 
   const saveClient = (clientData) => {
-    if (!checkAdminPermission()) return null;
     const saved = StorageService.saveClient(clientData);
     refreshData();
     showToast(`Client "${saved.Name}" saved to Google Sheets in real-time!`);
@@ -152,14 +125,12 @@ export function AppProvider({ children }) {
   };
 
   const deleteClient = (id) => {
-    if (!checkAdminPermission()) return;
     StorageService.deleteClient(id);
     refreshData();
     showToast('Client archived');
   };
 
   const saveEvent = (eventData) => {
-    if (!checkAdminPermission()) return null;
     const saved = StorageService.saveEvent(eventData);
     refreshData();
     showToast(`Shoot "${saved.EventName}" saved to Google Sheets in real-time!`);
@@ -167,14 +138,12 @@ export function AppProvider({ children }) {
   };
 
   const deleteEvent = (id) => {
-    if (!checkAdminPermission()) return;
     StorageService.deleteEvent(id);
     refreshData();
     showToast('Event archived');
   };
 
   const savePayment = (paymentData) => {
-    if (!checkAdminPermission()) return null;
     const saved = StorageService.savePayment(paymentData);
     refreshData();
     showToast(`Payment of ₹${Number(saved.Amount).toLocaleString('en-IN')} saved to Google Sheets in real-time!`);
@@ -182,7 +151,6 @@ export function AppProvider({ children }) {
   };
 
   const saveExpense = (expenseData) => {
-    if (!checkAdminPermission()) return null;
     const saved = StorageService.saveExpense(expenseData);
     refreshData();
     showToast(`Expense of ₹${Number(saved.Amount).toLocaleString('en-IN')} saved to Google Sheets in real-time!`);
@@ -190,14 +158,12 @@ export function AppProvider({ children }) {
   };
 
   const deleteExpense = (id) => {
-    if (!checkAdminPermission()) return;
     StorageService.deleteExpense(id);
     refreshData();
     showToast('Expense deleted');
   };
 
   const saveTeamMember = (memberData) => {
-    if (!checkAdminPermission()) return null;
     const saved = StorageService.saveTeamMember(memberData);
     refreshData();
     showToast(`Team member "${saved.Name}" saved to Google Sheets in real-time!`);
@@ -205,7 +171,6 @@ export function AppProvider({ children }) {
   };
 
   const saveEventTeamAssignment = (assignmentData) => {
-    if (!checkAdminPermission()) return null;
     const saved = StorageService.saveEventTeamAssignment(assignmentData);
     refreshData();
     showToast(`Assigned ${saved.PersonName} to shoot!`);
@@ -213,7 +178,6 @@ export function AppProvider({ children }) {
   };
 
   const saveTask = (taskData) => {
-    if (!checkAdminPermission()) return null;
     const saved = StorageService.saveTask(taskData);
     refreshData();
     showToast(`Task "${saved.TaskName}" saved to Google Sheets in real-time!`);
@@ -221,7 +185,6 @@ export function AppProvider({ children }) {
   };
 
   const saveDeliverable = (delivData) => {
-    if (!checkAdminPermission()) return null;
     const saved = StorageService.saveDeliverable(delivData);
     refreshData();
     showToast(`Deliverable "${saved.Type}" saved to Google Sheets in real-time!`);
@@ -274,13 +237,10 @@ export function AppProvider({ children }) {
         showToast,
         themeMode,
         toggleThemeMode,
+        isAuthenticated,
         currentUser,
-        loginUser,
-        logoutUser,
-        isAdmin,
-        checkAdminPermission,
-        isLoginModalOpen,
-        setIsLoginModalOpen,
+        loginWithPassword,
+        lockApp,
         settings,
         updateSettings,
         clients,
@@ -304,7 +264,6 @@ export function AppProvider({ children }) {
         saveDeliverable,
         auditLogs,
         refreshData,
-        loadDemoData,
         clearDatabase,
         financials
       }}

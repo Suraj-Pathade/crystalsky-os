@@ -1,64 +1,68 @@
 /**
- * Security & Google Account Authentication Service for CrystalSky OS
- * Authorised Admin Email: pravinghukshephotography@gmail.com
+ * Strict Security Authentication Service for CrystalSky OS
+ * Owner: Pravin Ghukshe
+ * Authorized Username/Email: pravinghukshephotography@gmail.com (or pravinghukshe)
+ * Authorized Password: Pravin@1994#
  */
 
 const ADMIN_EMAIL = 'pravinghukshephotography@gmail.com';
-const AUTH_KEY = 'crystalsky_auth_user';
+const ADMIN_USERNAME = 'pravinghukshe';
+const ADMIN_PASSWORD = 'Pravin@1994#';
+const AUTH_KEY = 'crystalsky_auth_session_v2';
 
 export const AuthService = {
   getAdminEmail() {
     return ADMIN_EMAIL;
   },
 
-  getCurrentUser() {
+  getCurrentSession() {
     try {
       const raw = localStorage.getItem(AUTH_KEY);
-      if (raw) return JSON.parse(raw);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && parsed.isLoggedIn) {
+          return parsed;
+        }
+      }
     } catch (e) {
-      console.warn('Auth storage error:', e);
+      console.warn('Auth session error:', e);
     }
-    // Default logged in as Pravin Ghukshe Admin
+    // Default: Locked state until user signs in with Pravin@1994#
     return {
-      email: ADMIN_EMAIL,
-      name: 'Pravin Ghukshe',
-      role: 'ADMIN',
-      avatar: 'PG',
-      isLoggedIn: true
+      isLoggedIn: false,
+      user: null
     };
   },
 
-  loginWithEmail(email, name = 'Pravin Ghukshe') {
-    const cleanedEmail = String(email || '').trim().toLowerCase();
-    const isAdmin = cleanedEmail === ADMIN_EMAIL.toLowerCase();
+  login(identifier, password) {
+    const cleanId = String(identifier || '').trim().toLowerCase();
+    const cleanPass = String(password || '').trim();
 
-    const user = {
-      email: cleanedEmail,
-      name: isAdmin ? 'Pravin Ghukshe' : name || 'Guest User',
-      role: isAdmin ? 'ADMIN' : 'VIEW_ONLY',
-      avatar: isAdmin ? 'PG' : (name ? name.substring(0, 2).toUpperCase() : 'GU'),
-      isLoggedIn: true,
-      loginTime: new Date().toISOString()
+    const isMatchId = cleanId === ADMIN_EMAIL.toLowerCase() || cleanId === ADMIN_USERNAME.toLowerCase();
+    const isMatchPass = cleanPass === ADMIN_PASSWORD;
+
+    if (isMatchId && isMatchPass) {
+      const session = {
+        isLoggedIn: true,
+        user: {
+          email: ADMIN_EMAIL,
+          name: 'Pravin Ghukshe',
+          role: 'ADMIN',
+          loginTime: new Date().toISOString()
+        }
+      };
+      localStorage.setItem(AUTH_KEY, JSON.stringify(session));
+      return { success: true, session };
+    }
+
+    return {
+      success: false,
+      error: 'Incorrect Username/Email or Password! Please enter valid Pravin Ghukshe credentials.'
     };
-
-    localStorage.setItem(AUTH_KEY, JSON.stringify(user));
-    return user;
   },
 
   logout() {
-    const guestUser = {
-      email: 'guest@crystalsky.com',
-      name: 'Guest Visitor',
-      role: 'VIEW_ONLY',
-      avatar: 'GV',
-      isLoggedIn: false
-    };
-    localStorage.setItem(AUTH_KEY, JSON.stringify(guestUser));
-    return guestUser;
-  },
-
-  isAdmin(user) {
-    if (!user) return false;
-    return user.role === 'ADMIN' && String(user.email).toLowerCase() === ADMIN_EMAIL.toLowerCase();
+    localStorage.removeItem(AUTH_KEY);
+    return { isLoggedIn: false, user: null };
   }
 };

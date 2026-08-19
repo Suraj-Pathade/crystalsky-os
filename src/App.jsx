@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { AppProvider, useApp } from './context/AppContext';
+import SecurityGateScreen from './components/SecurityGateScreen';
 import Sidebar from './components/Sidebar';
 import MobileNav from './components/MobileNav';
 import Header from './components/Header';
@@ -37,7 +38,7 @@ import IntegrationsTestPage from './views/IntegrationsTestPage';
 import AuditLogView from './views/AuditLogView';
 
 function MainAppContent() {
-  const { activeView, setActiveView, toastMessage } = useApp();
+  const { activeView, setActiveView, toastMessage, isAuthenticated, loginWithPassword } = useApp();
 
   // Modals state
   const [quickAddOpen, setQuickAddOpen] = useState(false);
@@ -49,6 +50,11 @@ function MainAppContent() {
   
   const [receiptModalOpen, setReceiptModalOpen] = useState(false);
   const [activePaymentForReceipt, setActivePaymentForReceipt] = useState(null);
+
+  // Strict Password Gate Lockout: If not logged in, block everything!
+  if (!isAuthenticated) {
+    return <SecurityGateScreen onLoginSuccess={loginWithPassword} />;
+  }
 
   const handleQuickAddAction = (actionId) => {
     if (actionId === 'new_client') setClientModalOpen(true);
@@ -182,7 +188,7 @@ function MainAppContent() {
 
       {/* Global Toast Alert */}
       {toastMessage && (
-        <div className="fixed bottom-20 md:bottom-6 right-6 z-50 px-4 py-3 rounded-xl bg-zinc-900 border border-amber-500/50 text-white font-bold text-xs shadow-2xl animate-bounce flex items-center gap-2">
+        <div className="fixed bottom-20 md:bottom-6 right-6 z-50 px-4 py-3 rounded-xl bg-zinc-900 border border-amber-500/50 text-white font-bold text-xs shadow-2xl flex items-center gap-2">
           <span>✨</span>
           <span>{toastMessage.message}</span>
         </div>
