@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
 import { StorageService } from '../services/storageService';
+import { AuthService } from '../services/authService';
 import { 
   SAMPLE_CLIENTS, SAMPLE_EVENTS, SAMPLE_PAYMENTS, 
   SAMPLE_EXPENSES, SAMPLE_TEAM, SAMPLE_EVENT_TEAM, 
@@ -14,6 +15,36 @@ export function AppProvider({ children }) {
   const [selectedClientId, setSelectedClientId] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [toastMessage, setToastMessage] = useState(null);
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+
+  // Security Auth State (pravinghukshephotography@gmail.com = Admin)
+  const [currentUser, setCurrentUser] = useState(() => AuthService.getCurrentUser());
+
+  const loginUser = (email, name) => {
+    const user = AuthService.loginWithEmail(email, name);
+    setCurrentUser(user);
+    return user;
+  };
+
+  const logoutUser = () => {
+    const guest = AuthService.logout();
+    setCurrentUser(guest);
+    showToast('Signed out. You are now in View-Only Guest Mode.');
+  };
+
+  const isAdmin = useMemo(() => {
+    return AuthService.isAdmin(currentUser);
+  }, [currentUser]);
+
+  // Check permission before mutating data
+  const checkAdminPermission = () => {
+    if (!isAdmin) {
+      showToast('🔒 Access Denied: Only pravinghukshephotography@gmail.com has edit permissions. You are in View-Only Mode.', 'warning');
+      setIsLoginModalOpen(true);
+      return false;
+    }
+    return true;
+  };
 
   // Light / Dark Mode state
   const [themeMode, setThemeMode] = useState(() => {
@@ -83,6 +114,7 @@ export function AppProvider({ children }) {
 
   // 1-Click Load Sample Demo Data
   const loadDemoData = () => {
+    if (!checkAdminPermission()) return;
     localStorage.setItem('crystalsky_clients', JSON.stringify(SAMPLE_CLIENTS));
     localStorage.setItem('crystalsky_events', JSON.stringify(SAMPLE_EVENTS));
     localStorage.setItem('crystalsky_payments', JSON.stringify(SAMPLE_PAYMENTS));
@@ -97,19 +129,22 @@ export function AppProvider({ children }) {
 
   // 1-Click Clear Database
   const clearDatabase = () => {
+    if (!checkAdminPermission()) return;
     StorageService.clearAllData();
     refreshData();
     showToast('Cleared database to empty state.');
   };
 
-  // Actions
+  // Actions with Permission Checks
   const updateSettings = (newSettings) => {
+    if (!checkAdminPermission()) return;
     const updated = StorageService.saveSettings(newSettings);
     setSettings(updated);
     showToast('Settings saved successfully!');
   };
 
   const saveClient = (clientData) => {
+    if (!checkAdminPermission()) return null;
     const saved = StorageService.saveClient(clientData);
     refreshData();
     showToast(`Client "${saved.Name}" saved to Google Sheets in real-time!`);
@@ -117,12 +152,14 @@ export function AppProvider({ children }) {
   };
 
   const deleteClient = (id) => {
+    if (!checkAdminPermission()) return;
     StorageService.deleteClient(id);
     refreshData();
     showToast('Client archived');
   };
 
   const saveEvent = (eventData) => {
+    if (!checkAdminPermission()) return null;
     const saved = StorageService.saveEvent(eventData);
     refreshData();
     showToast(`Shoot "${saved.EventName}" saved to Google Sheets in real-time!`);
@@ -130,12 +167,14 @@ export function AppProvider({ children }) {
   };
 
   const deleteEvent = (id) => {
+    if (!checkAdminPermission()) return;
     StorageService.deleteEvent(id);
     refreshData();
     showToast('Event archived');
   };
 
   const savePayment = (paymentData) => {
+    if (!checkAdminPermission()) return null;
     const saved = StorageService.savePayment(paymentData);
     refreshData();
     showToast(`Payment of ₹${Number(saved.Amount).toLocaleString('en-IN')} saved to Google Sheets in real-time!`);
@@ -143,6 +182,7 @@ export function AppProvider({ children }) {
   };
 
   const saveExpense = (expenseData) => {
+    if (!checkAdminPermission()) return null;
     const saved = StorageService.saveExpense(expenseData);
     refreshData();
     showToast(`Expense of ₹${Number(saved.Amount).toLocaleString('en-IN')} saved to Google Sheets in real-time!`);
@@ -150,12 +190,14 @@ export function AppProvider({ children }) {
   };
 
   const deleteExpense = (id) => {
+    if (!checkAdminPermission()) return;
     StorageService.deleteExpense(id);
     refreshData();
     showToast('Expense deleted');
   };
 
   const saveTeamMember = (memberData) => {
+    if (!checkAdminPermission()) return null;
     const saved = StorageService.saveTeamMember(memberData);
     refreshData();
     showToast(`Team member "${saved.Name}" saved to Google Sheets in real-time!`);
@@ -163,6 +205,7 @@ export function AppProvider({ children }) {
   };
 
   const saveEventTeamAssignment = (assignmentData) => {
+    if (!checkAdminPermission()) return null;
     const saved = StorageService.saveEventTeamAssignment(assignmentData);
     refreshData();
     showToast(`Assigned ${saved.PersonName} to shoot!`);
@@ -170,6 +213,7 @@ export function AppProvider({ children }) {
   };
 
   const saveTask = (taskData) => {
+    if (!checkAdminPermission()) return null;
     const saved = StorageService.saveTask(taskData);
     refreshData();
     showToast(`Task "${saved.TaskName}" saved to Google Sheets in real-time!`);
@@ -177,6 +221,7 @@ export function AppProvider({ children }) {
   };
 
   const saveDeliverable = (delivData) => {
+    if (!checkAdminPermission()) return null;
     const saved = StorageService.saveDeliverable(delivData);
     refreshData();
     showToast(`Deliverable "${saved.Type}" saved to Google Sheets in real-time!`);
@@ -229,6 +274,13 @@ export function AppProvider({ children }) {
         showToast,
         themeMode,
         toggleThemeMode,
+        currentUser,
+        loginUser,
+        logoutUser,
+        isAdmin,
+        checkAdminPermission,
+        isLoginModalOpen,
+        setIsLoginModalOpen,
         settings,
         updateSettings,
         clients,

@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
-import { Camera, Plus, Search, Calendar, MapPin, Phone, CreditCard, ChevronRight, Filter } from 'lucide-react';
+import { Camera, Plus, Search, Calendar, MapPin, Phone, CreditCard, ChevronRight, Filter, Edit3 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import EventModal from './EventModal';
 
 export default function EventsView({ onOpenEventModal }) {
-  const { events, payments, setSelectedEventId, setActiveView, searchQuery } = useApp();
+  const { events, payments, setSelectedEventId, setActiveView, searchQuery, checkAdminPermission } = useApp();
   const [filterType, setFilterType] = useState('ALL');
   const [filterStatus, setFilterStatus] = useState('ALL');
+  const [editingEvent, setEditingEvent] = useState(null);
 
   const filteredEvents = events.filter(e => {
     const matchesSearch = 
@@ -20,6 +22,12 @@ export default function EventsView({ onOpenEventModal }) {
     return matchesSearch && matchesType && matchesStatus;
   }).sort((a,b) => (b.EventDate || '').localeCompare(a.EventDate || ''));
 
+  const handleEditClick = (e, event) => {
+    e.stopPropagation();
+    if (!checkAdminPermission()) return;
+    setEditingEvent(event);
+  };
+
   return (
     <div className="space-y-6 pb-12">
       {/* Header Bar */}
@@ -30,7 +38,7 @@ export default function EventsView({ onOpenEventModal }) {
             Events & Shoot Bookings
           </h1>
           <p className="text-xs text-zinc-400">
-            Manage photography bookings, event dates, contract values, and team assignments
+            Manage photography bookings, shoot dates, prices, and team assignments for Pravin Ghukshe
           </p>
         </div>
 
@@ -82,7 +90,7 @@ export default function EventsView({ onOpenEventModal }) {
         </span>
       </div>
 
-      {/* Events Grid / List */}
+      {/* Events Grid / Mobile Stacked Cards */}
       {filteredEvents.length === 0 ? (
         <div className="p-12 rounded-2xl border border-dashed border-zinc-800 text-center space-y-3 bg-zinc-950">
           <Camera className="w-10 h-10 text-zinc-600 mx-auto" />
@@ -110,57 +118,96 @@ export default function EventsView({ onOpenEventModal }) {
               <div
                 key={event.EventID}
                 onClick={() => { setSelectedEventId(event.EventID); setActiveView('event_detail'); }}
-                className="p-5 rounded-2xl glass-panel hover:border-amber-500/50 cursor-pointer transition-all duration-200 flex flex-col justify-between space-y-4 group"
+                className="p-4 md:p-5 rounded-2xl glass-panel hover:border-amber-500/50 cursor-pointer transition-all duration-200 flex flex-col justify-between space-y-4 group"
               >
                 <div>
-                  {/* Top Badge Row */}
+                  {/* Top Badge & Action Row */}
                   <div className="flex items-center justify-between gap-2 mb-2">
                     <span className="px-2.5 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 text-[10px] font-bold tracking-wide">
                       {event.EventType || 'Shoot'}
                     </span>
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                      isPaid ? 'badge-paid' : pending > 0 ? 'badge-duesoon' : 'badge-upcoming'
-                    }`}>
-                      {isPaid ? 'PAID IN FULL' : `PENDING: ₹${pending.toLocaleString('en-IN')}`}
-                    </span>
+                    
+                    <div className="flex items-center gap-1.5">
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                        isPaid ? 'badge-paid' : pending > 0 ? 'badge-duesoon' : 'badge-upcoming'
+                      }`}>
+                        {isPaid ? 'PAID IN FULL' : `PENDING: ₹${pending.toLocaleString('en-IN')}`}
+                      </span>
+
+                      <button
+                        onClick={(e) => handleEditClick(e, event)}
+                        title="Edit shoot details, price, or date"
+                        className="p-1 rounded-lg bg-zinc-900 border border-zinc-800 text-amber-400 hover:bg-amber-500/20"
+                      >
+                        <Edit3 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </div>
 
                   {/* Title & Client */}
-                  <h3 className="text-base font-extrabold text-white group-hover:text-amber-400 transition-colors line-clamp-1">
+                  <h3 className="text-base font-extrabold text-white group-hover:text-amber-400 transition-colors">
                     {event.EventName}
                   </h3>
-                  <p className="text-xs text-zinc-400 font-medium">👤 Client: {event.ClientName}</p>
+                  <p className="text-xs text-zinc-400 font-medium mt-0.5">👤 Client: {event.ClientName}</p>
                 </div>
 
-                {/* Details Meta */}
+                {/* Details Meta (Mobile Stacked) */}
                 <div className="space-y-1.5 pt-2 border-t border-zinc-800/80 text-xs text-zinc-300 font-mono">
-                  <div className="flex items-center gap-2 text-zinc-400">
-                    <Calendar className="w-3.5 h-3.5 text-amber-500" />
-                    <span>{event.EventDate || 'Date TBD'} ({event.StartTime || '09:00'})</span>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-zinc-500 font-bold uppercase text-[10px]">Shoot Date:</span>
+                    <span className="text-amber-400 font-bold">{event.EventDate || 'Date TBD'} ({event.StartTime || '09:00'})</span>
                   </div>
-                  <div className="flex items-center gap-2 text-zinc-400 truncate">
-                    <MapPin className="w-3.5 h-3.5 text-rose-400 shrink-0" />
-                    <span className="truncate">{event.Venue || 'Venue not set'} {event.City ? `(${event.City})` : ''}</span>
+
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-zinc-500 font-bold uppercase text-[10px]">Venue / City:</span>
+                    <span className="text-zinc-300 font-medium truncate max-w-[180px]">{event.Venue || 'Venue not set'} {event.City ? `(${event.City})` : ''}</span>
                   </div>
+
+                  {event.ClientPhone && (
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-zinc-500 font-bold uppercase text-[10px]">Contact:</span>
+                      <span className="text-zinc-400">📱 {event.ClientPhone}</span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Financial Footer */}
                 <div className="pt-3 border-t border-zinc-800/80 flex items-center justify-between">
                   <div>
-                    <p className="text-[10px] uppercase text-zinc-500 font-bold">Contract Value</p>
+                    <p className="text-[10px] uppercase text-zinc-500 font-bold">Total Package Price</p>
                     <p className="text-sm font-bold text-white">
                       ₹{Number(event.TotalContractValue || 0).toLocaleString('en-IN')}
                     </p>
                   </div>
-                  <div className="flex items-center text-xs font-bold text-amber-400 group-hover:translate-x-1 transition-transform">
-                    <span>Manage</span>
-                    <ChevronRight className="w-4 h-4" />
+                  
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={(e) => handleEditClick(e, event)}
+                      className="px-2.5 py-1 rounded-lg bg-zinc-900 border border-zinc-800 text-amber-400 hover:bg-amber-500/20 text-[11px] font-bold flex items-center gap-1"
+                    >
+                      <Edit3 className="w-3 h-3" />
+                      <span>Edit</span>
+                    </button>
+
+                    <div className="flex items-center text-xs font-bold text-amber-400 group-hover:translate-x-1 transition-transform">
+                      <span>View</span>
+                      <ChevronRight className="w-4 h-4" />
+                    </div>
                   </div>
                 </div>
               </div>
             );
           })}
         </div>
+      )}
+
+      {/* Edit Shoot Modal */}
+      {editingEvent && (
+        <EventModal
+          isOpen={Boolean(editingEvent)}
+          onClose={() => setEditingEvent(null)}
+          initialData={editingEvent}
+        />
       )}
     </div>
   );

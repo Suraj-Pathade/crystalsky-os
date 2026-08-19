@@ -2,21 +2,23 @@ import React, { useState } from 'react';
 import { 
   ArrowLeft, Camera, Calendar, MapPin, Phone, CreditCard, Receipt, 
   UserCheck, CheckSquare, PackageCheck, MessageSquare, Download, 
-  Plus, Edit, Trash2, ExternalLink
+  Plus, Edit3, Trash2, ExternalLink
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { generateWhatsAppURL, buildTeamNotificationMessage, buildPaymentReminderMessage } from '../services/whatsappService';
 import { buildGoogleCalendarUrl, downloadIcsFile } from '../services/calendarService';
+import EventModal from './EventModal';
 
 export default function EventDetailView({ 
   onBack, onOpenPaymentModal, onOpenExpenseModal, onOpenTeamAssignmentModal, onOpenTaskModal, onOpenDeliverableModal 
 }) {
   const { 
     selectedEventId, events, payments, expenses, eventTeam, tasks, deliverables, 
-    saveEvent, deleteEvent, showToast 
+    saveEvent, deleteEvent, showToast, checkAdminPermission 
   } = useApp();
 
   const [activeTab, setActiveTab] = useState('overview'); // overview, payments, expenses, team, tasks, deliverables, notes
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   const event = events.find(e => e.EventID === selectedEventId);
 
@@ -55,8 +57,14 @@ export default function EventDetailView({
   ];
 
   const handleStatusChange = (newStatus) => {
+    if (!checkAdminPermission()) return;
     saveEvent({ ...event, ProductionStatus: newStatus });
     showToast(`Status updated to ${newStatus}`);
+  };
+
+  const handleEditClick = () => {
+    if (!checkAdminPermission()) return;
+    setIsEditModalOpen(true);
   };
 
   // WhatsApp Team Details Link
@@ -96,7 +104,7 @@ export default function EventDetailView({
   return (
     <div className="space-y-6 pb-12">
       {/* Back Button & Action Bar */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <button
           onClick={onBack}
           className="px-3 py-1.5 rounded-xl bg-zinc-900 border border-zinc-800 text-xs font-semibold text-zinc-300 hover:text-white flex items-center gap-2"
@@ -105,7 +113,16 @@ export default function EventDetailView({
           Back to Events
         </button>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Edit Shoot Details Button */}
+          <button
+            onClick={handleEditClick}
+            className="btn-gold px-3.5 py-1.5 rounded-xl text-xs font-extrabold flex items-center gap-1.5 shadow-md"
+          >
+            <Edit3 className="w-3.5 h-3.5" />
+            Edit Shoot Details
+          </button>
+
           <a
             href={buildGoogleCalendarUrl(event)}
             target="_blank"
@@ -113,7 +130,7 @@ export default function EventDetailView({
             className="px-3 py-1.5 rounded-xl bg-blue-500/20 text-blue-400 border border-blue-500/30 hover:bg-blue-500/30 text-xs font-semibold flex items-center gap-1.5"
           >
             <Calendar className="w-3.5 h-3.5" />
-            Google Calendar Sync
+            Calendar Sync
           </a>
 
           <button
@@ -126,8 +143,8 @@ export default function EventDetailView({
         </div>
       </div>
 
-      {/* Main Event Header Card */}
-      <div className="p-6 rounded-2xl glass-panel-gold space-y-4">
+      {/* Main Event Header Card (Mobile Stacked) */}
+      <div className="p-5 md:p-6 rounded-2xl glass-panel-gold space-y-4">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2">
@@ -136,12 +153,12 @@ export default function EventDetailView({
               </span>
               <span className="text-xs text-zinc-400 font-mono">ID: {event.EventID}</span>
             </div>
-            <h1 className="text-2xl md:text-3xl font-extrabold text-white mt-1">{event.EventName}</h1>
-            <p className="text-xs text-zinc-400 font-medium">👤 Client: {event.ClientName} ({event.ClientPhone || 'No Phone'})</p>
+            <h1 className="text-xl md:text-3xl font-extrabold text-white mt-1">{event.EventName}</h1>
+            <p className="text-xs text-zinc-300 font-medium mt-0.5">👤 Client: <strong>{event.ClientName}</strong> ({event.ClientPhone || 'No Phone'})</p>
           </div>
 
           {/* Production Status Dropdown */}
-          <div className="bg-zinc-950 p-3 rounded-xl border border-zinc-800 space-y-1">
+          <div className="bg-zinc-950 p-3 rounded-xl border border-zinc-800 space-y-1 w-full md:w-auto">
             <p className="text-[10px] uppercase font-bold text-zinc-400">Production Workflow</p>
             <select
               value={event.ProductionStatus || 'BOOKED'}
@@ -155,11 +172,11 @@ export default function EventDetailView({
           </div>
         </div>
 
-        {/* Shoot Metadata */}
+        {/* Shoot Metadata (Mobile Friendly) */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3 border-t border-zinc-800 text-xs text-zinc-300">
           <div className="flex items-center gap-2">
             <Calendar className="w-4 h-4 text-amber-400 shrink-0" />
-            <span>Date: <strong>{event.EventDate || 'TBD'}</strong> ({event.StartTime || '09:00'})</span>
+            <span>Date: <strong className="text-amber-400 font-mono">{event.EventDate || 'TBD'}</strong> ({event.StartTime || '09:00'})</span>
           </div>
           <div className="flex items-center gap-2">
             <MapPin className="w-4 h-4 text-rose-400 shrink-0" />
@@ -167,7 +184,7 @@ export default function EventDetailView({
           </div>
           {event.GoogleMapsLink && (
             <div className="flex items-center gap-1.5 text-amber-400">
-              <ExternalLink className="w-3.5 h-3.5" />
+              <ExternalLink className="w-3.5 h-3.5 shrink-0" />
               <a href={event.GoogleMapsLink} target="_blank" rel="noreferrer" className="underline truncate">
                 View Google Maps
               </a>
@@ -176,31 +193,31 @@ export default function EventDetailView({
         </div>
       </div>
 
-      {/* Financial Summary Cards for this Event */}
+      {/* Financial Summary Cards for this Event (Mobile Grid) */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-        <div className="p-4 rounded-xl glass-panel">
+        <div className="p-3.5 md:p-4 rounded-xl glass-panel">
           <p className="text-[10px] uppercase font-bold text-zinc-400">Contract Value</p>
-          <p className="text-base md:text-lg font-extrabold text-white mt-1">₹{totalContract.toLocaleString('en-IN')}</p>
+          <p className="text-sm md:text-lg font-extrabold text-white mt-1">₹{totalContract.toLocaleString('en-IN')}</p>
         </div>
 
-        <div className="p-4 rounded-xl glass-panel border-l-2 border-l-emerald-500">
+        <div className="p-3.5 md:p-4 rounded-xl glass-panel border-l-2 border-l-emerald-500">
           <p className="text-[10px] uppercase font-bold text-emerald-400">Total Received</p>
-          <p className="text-base md:text-lg font-extrabold text-emerald-400 mt-1">₹{totalPaid.toLocaleString('en-IN')}</p>
+          <p className="text-sm md:text-lg font-extrabold text-emerald-400 mt-1">₹{totalPaid.toLocaleString('en-IN')}</p>
         </div>
 
-        <div className="p-4 rounded-xl glass-panel border-l-2 border-l-amber-500">
+        <div className="p-3.5 md:p-4 rounded-xl glass-panel border-l-2 border-l-amber-500">
           <p className="text-[10px] uppercase font-bold text-amber-400">Balance Pending</p>
-          <p className="text-base md:text-lg font-extrabold text-amber-400 mt-1">₹{pendingBalance.toLocaleString('en-IN')}</p>
+          <p className="text-sm md:text-lg font-extrabold text-amber-400 mt-1">₹{pendingBalance.toLocaleString('en-IN')}</p>
         </div>
 
-        <div className="p-4 rounded-xl glass-panel border-l-2 border-l-rose-500">
+        <div className="p-3.5 md:p-4 rounded-xl glass-panel border-l-2 border-l-rose-500">
           <p className="text-[10px] uppercase font-bold text-rose-400">Event Expenses</p>
-          <p className="text-base md:text-lg font-extrabold text-rose-400 mt-1">₹{totalExpenses.toLocaleString('en-IN')}</p>
+          <p className="text-sm md:text-lg font-extrabold text-rose-400 mt-1">₹{totalExpenses.toLocaleString('en-IN')}</p>
         </div>
 
-        <div className="p-4 rounded-xl glass-panel-gold">
+        <div className="p-3.5 md:p-4 rounded-xl glass-panel-gold col-span-2 lg:col-span-1">
           <p className="text-[10px] uppercase font-bold text-amber-300">Estimated Profit</p>
-          <p className="text-base md:text-lg font-extrabold text-white mt-1">₹{estimatedProfit.toLocaleString('en-IN')}</p>
+          <p className="text-sm md:text-lg font-extrabold text-white mt-1">₹{estimatedProfit.toLocaleString('en-IN')}</p>
           <p className="text-[10px] text-amber-400 font-semibold">{profitMargin}% margin</p>
         </div>
       </div>
@@ -211,9 +228,7 @@ export default function EventDetailView({
           { id: 'overview', label: 'Overview' },
           { id: 'payments', label: `Payments (${evPayments.length})` },
           { id: 'expenses', label: `Expenses (${evExpenses.length})` },
-          { id: 'team', label: `Team (${evTeam.length})` },
-          { id: 'tasks', label: 'Tasks' },
-          { id: 'deliverables', label: 'Deliverables' }
+          { id: 'team', label: `Team (${evTeam.length})` }
         ].map(tab => (
           <button
             key={tab.id}
@@ -228,8 +243,6 @@ export default function EventDetailView({
           </button>
         ))}
       </div>
-
-      {/* Tab Contents */}
 
       {/* OVERVIEW TAB */}
       {activeTab === 'overview' && (
@@ -400,6 +413,15 @@ export default function EventDetailView({
             </div>
           )}
         </div>
+      )}
+
+      {/* Edit Event Modal */}
+      {isEditModalOpen && (
+        <EventModal
+          isOpen={isEditModalOpen}
+          onClose={() => setIsEditModalOpen(false)}
+          initialData={event}
+        />
       )}
     </div>
   );
