@@ -1,10 +1,16 @@
-import React from 'react';
-import { UserCheck, Plus, Phone, MessageSquare, Tag } from 'lucide-react';
+import React, { useState } from 'react';
+import { UserCheck, Plus, Phone, MessageSquare, Tag, Edit3 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { generateWhatsAppURL } from '../services/whatsappService';
+import TeamMemberModal from './TeamMemberModal';
 
 export default function TeamView({ onOpenTeamModal }) {
   const { team, eventTeam } = useApp();
+  const [editingMember, setEditingMember] = useState(null);
+
+  const handleEditMember = (member) => {
+    setEditingMember(member);
+  };
 
   return (
     <div className="space-y-6 pb-12">
@@ -59,23 +65,38 @@ export default function TeamView({ onOpenTeamModal }) {
             };
 
             return (
-              <div key={member.PersonID} className="p-5 rounded-2xl glass-panel space-y-3">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="text-base font-extrabold text-white">{member.Name}</h3>
-                    <span className="px-2 py-0.5 rounded-full bg-purple-500/10 border border-purple-500/30 text-purple-400 text-[10px] font-bold">
-                      {member.Role}
-                    </span>
-                  </div>
-                  <button
-                    onClick={handleWhatsApp}
-                    className="p-2 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/30"
-                  >
-                    <MessageSquare className="w-4 h-4" />
-                  </button>
-                </div>
+              <div key={member.PersonID} className="p-5 rounded-2xl glass-panel space-y-3 flex flex-col justify-between">
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-base font-extrabold text-white">{member.Name}</h3>
+                      <span className="px-2 py-0.5 rounded-full bg-purple-500/10 border border-purple-500/30 text-purple-400 text-[10px] font-bold">
+                        {member.Role}
+                      </span>
+                    </div>
 
-                <p className="text-xs text-zinc-400 font-mono">📱 Phone: {member.Phone || 'N/A'}</p>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={() => handleEditMember(member)}
+                        className="p-2 rounded-xl bg-zinc-900 border border-zinc-800 text-amber-400 hover:bg-amber-500/20"
+                        title="Edit Team Member Details"
+                      >
+                        <Edit3 className="w-4 h-4" />
+                      </button>
+
+                      <button
+                        onClick={handleWhatsApp}
+                        className="p-2 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/30"
+                        title="Contact via WhatsApp"
+                      >
+                        <MessageSquare className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+
+                  <p className="text-xs text-zinc-400 font-mono">📱 Phone: {member.Phone || 'N/A'}</p>
+                  {member.Notes && <p className="text-xs text-zinc-500 italic">"{member.Notes}"</p>}
+                </div>
 
                 <div className="pt-2 border-t border-zinc-800 text-xs flex justify-between">
                   <span className="text-zinc-400">Events Assigned: <strong className="text-white">{assignments.length}</strong></span>
@@ -85,6 +106,15 @@ export default function TeamView({ onOpenTeamModal }) {
             );
           })}
         </div>
+      )}
+
+      {/* Edit Team Member Modal */}
+      {editingMember && (
+        <TeamMemberModal
+          isOpen={Boolean(editingMember)}
+          onClose={() => setEditingMember(null)}
+          initialData={editingMember}
+        />
       )}
     </div>
   );
